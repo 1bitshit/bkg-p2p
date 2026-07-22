@@ -1,0 +1,2 @@
+
+Your connected MCP server tools (use server:tool_name format in <tool_call>):

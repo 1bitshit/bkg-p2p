@@ -1,0 +1,113 @@
+//! libp2p behaviour composition.
+
+use libp2p::{
+    gossipsub, identify,
+    identity::Keypair,
+    kad, mdns, noise, request_response,
+    swarm::{NetworkBehaviour, StreamProtocol, Swarm},
+    tcp, yamux, PeerId,
+};
+use std::time::Duration;
+
+use crate::a2a::jsonrpc::{A2aRpcWireRequest, A2aRpcWireResponse};
+use crate::config::P2pConfig;
+
+/// Combined network behaviour for bkg-peer.
+#[derive(NetworkBehaviour)]
+pub struct PeerclawdBehaviour {
+    /// JSON-RPC envelope over request-response (A2A mesh bridge).
+    pub a2a_rpc: request_response::json::Behaviour<A2aRpcWireRequest, A2aRpcWireResponse>,
+
+    /// Kademlia DHT for peer discovery and content routing
+    pub kademlia: kad::Behaviour<kad::store::MemoryStore>,
+
+    /// mDNS for local network discovery
+    pub mdns: mdns::tokio::Behaviour,
+
+    /// GossipSub for pub/sub messaging
+    pub gossipsub: gossipsub::Behaviour,
+
+    /// Identify protocol for peer information exchange
+    pub identify: identify::Behaviour,
+}
+
+/// Build a complete swarm with all behaviours configured.
+pub fn build_swarm(
+    keypair: Keypair,
+    _config: &P2pConfig,
+) -> anyhow::Result<Swarm<PeerclawdBehaviour>> {
+    let local_peer_id = PeerId::from(keypair.public());
+
+    let a2a_proto = StreamProtocol::new("/bkg-peer/a2a-rpc/1.0.0");
+    let a2a_rpc = request_response::json::Behaviour::new(
+        [(a2a_proto, request_response::ProtocolSupport::Full)],
+        request_response::Config::default().with_request_timeout(Duration::from_secs(120)),
+    );
+
+    // Build the swarm with TCP transport
+    let swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
+        .with_tokio()
+        .with_tcp(
+            tcp::Config::default(),
+            noise::Config::new,
+            yamux::Config::default,
+        )?
+        .with_behaviour(|keypair| {
+            // Kademlia DHT
+            let kademlia = {
+                let store = kad::store::MemoryStore::new(local_peer_id);
+                let config = kad::Config::new(libp2p::StreamProtocol::new("/bkg-peer/kad/1.0.0"));
+                kad::Behaviour::with_config(local_peer_id, store, config)
+            };
+
+            // mDNS
+            let mdns = mdns::tokio::Behaviour::new(mdns::Config::default(), local_peer_id)?;
+
+            // GossipSub
+            let gossipsub = {
+                let config = gossipsub::ConfigBuilder::default()
+                    .heartbeat_interval(Duration::from_secs(10))
+                    .validation_mode(gossipsub::ValidationMode::Strict)
+                    .build()
+                    .map_err(|e| anyhow::anyhow!("GossipSub config error: {}", e))?;
+
+                gossipsub::Behaviour::new(
+                    gossipsub::MessageAuthenticity::Signed(keypair.clone()),
+                    config,
+                )
+                .map_err(|e| anyhow::anyhow!("GossipSub creation error: {}", e))?
+            };
+
+            // Identify
+            let identify = identify::Behaviour::new(
+                identify::Config::new("/bkg-peer/1.0.0".to_string(), keypair.public())
+                    .with_agent_version(format!("bkg-peer/{}", env!("CARGO_PKG_VERSION"))),
+            );
+
+            Ok(PeerclawdBehaviour {
+                a2a_rpc,
+                kademlia,
+                mdns,
+                gossipsub,
+                identify,
+            })
+        })?
+        .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(Duration::from_secs(60)))
+        .build();
+
+    Ok(swarm)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::identity::NodeIdentity;
+
+    #[test]
+    fn test_build_swarm() {
+        let identity = NodeIdentity::generate();
+        let config = P2pConfig::default();
+        let result = build_swarm(identity.to_libp2p_keypair(), &config);
+        assert!(result.is_ok());
+    }
+}

@@ -1,0 +1,875 @@
+//! AI inference engine with GGUF model support.
+//!
+//! This module provides local inference capabilities for LLM models
+//! in GGUF format, with automatic model caching and resource management.
+//!
+//! # Architecture
+//!
+//! ```text
+//! ┌─────────────────┐
+//! │ InferenceEngine │
+//! └────────┬────────┘
+//!          │
+//!    ┌─────┴─────┐
+//!    │           │
+//!    ▼           ▼
+//! ┌──────┐  ┌──────────┐
+//! │ModelCache│  │ModelRegistry│
+//! └──────┘  └──────────┘
+//! ```
+
+/// Silence llama.cpp and ggml log output.
+/// Call this before any model loading to suppress verbose logs.
+pub fn silence_llama_logs() {
+    #[cfg(feature = "local-inference")]
+    {
+        use std::ffi::c_void;
+        use std::os::raw::c_char;
+
+        // Null callback that discards all log messages
+        unsafe extern "C" fn void_log(
+            _level: llama_cpp_sys_2::ggml_log_level,
+            _text: *const c_char,
+            _user_data: *mut c_void,
+        ) {
+        }
+
+        unsafe {
+            // Silence llama.cpp logs
+            llama_cpp_sys_2::llama_log_set(Some(void_log), std::ptr::null_mut());
+        }
+    }
+}
+
+pub mod batch;
+pub mod cache;
+pub mod distribution;
+pub mod failover;
+pub mod gguf;
+pub mod live_settings;
+pub mod model;
+pub mod ollama;
+pub mod remote_openai;
+
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Instant;
+
+use tokio::sync::RwLock;
+
+pub use batch::{
+    BatchAggregator, BatchConfig, BatchError, BatchInferenceExecutor, BatchProcessor, BatchRequest,
+    BatchResponse, BatchStats,
+};
+pub use cache::{CacheError, LoadedModel, ModelCache, ModelHandle};
+pub use distribution::{
+    DistributionError, DownloadProgress, ModelAnnouncement, ModelDistributionMessage,
+    ModelDistributor, ModelMetadata, CHUNK_SIZE,
+};
+pub use failover::{BackendId, ErrorKind, FailoverChain};
+pub use gguf::{
+    AsyncGgufEngine, GgufBackend, GgufConfig, GgufEngine, GgufError, GgufModelHandle,
+    GgufModelInfo, TokenCallback,
+};
+pub use live_settings::InferenceLiveSettings;
+pub use model::{ModelArchitecture, ModelId, ModelInfo, ModelRequirements, Quantization};
+
+/// Inference engine for running LLM models.
+///
+/// Supports multiple backends (see [`InferenceLiveSettings`]): remote OpenAI-compatible API,
+/// local GGUF registry path, and Ollama.
+pub struct InferenceEngine {
+    /// Model cache for loaded models
+    cache: ModelCache,
+    /// Directory where models are stored
+    models_dir: PathBuf,
+    /// Engine configuration
+    config: InferenceConfig,
+    /// Model registry (available but not necessarily loaded)
+    registry: Arc<RwLock<ModelRegistry>>,
+    /// Runtime toggles from web UI / config
+    live: Arc<tokio::sync::RwLock<InferenceLiveSettings>>,
+    /// GGUF backend for local model inference
+    gguf: gguf::GgufEngine,
+    /// Failover chain for multi-backend inference
+    failover: Option<FailoverChain>,
+}
+
+impl InferenceEngine {
+    /// Create a new inference engine.
+    pub fn new(
+        config: InferenceConfig,
+        live: Arc<tokio::sync::RwLock<InferenceLiveSettings>>,
+    ) -> std::io::Result<Self> {
+        // Ensure models directory exists
+        std::fs::create_dir_all(&config.models_dir)?;
+
+        let cache = ModelCache::new(config.max_loaded_models, config.max_memory_mb);
+        let registry = Arc::new(RwLock::new(ModelRegistry::new()));
+
+        let gguf = gguf::GgufEngine::new(gguf::GgufConfig {
+            n_gpu_layers: config.gpu_layers,
+            n_ctx: config.context_size,
+            n_batch: config.batch_size,
+            ..Default::default()
+        });
+
+        let engine = Self {
+            cache,
+            models_dir: config.models_dir.clone(),
+            config,
+            registry,
+            live,
+            gguf,
+            failover: None,
+        };
+
+        Ok(engine)
+    }
+
+    /// Enable the failover chain for multi-backend inference.
+    ///
+    /// When enabled, `generate()` will try backends in order:
+    /// local GGUF -> (P2P if enabled) -> Ollama -> remote API,
+    /// with circuit breaker logic per backend.
+    pub fn enable_failover(&mut self, p2p_enabled: bool) {
+        let gguf_arc = Arc::new(gguf::GgufEngine::new(gguf::GgufConfig {
+            n_gpu_layers: self.config.gpu_layers,
+            n_ctx: self.config.context_size,
+            n_batch: self.config.batch_size,
+            ..Default::default()
+        }));
+
+        self.failover = Some(FailoverChain::new(
+            self.live.clone(),
+            gguf_arc,
+            self.registry.clone(),
+            p2p_enabled,
+        ));
+    }
+
+    pub fn live_settings(&self) -> Arc<tokio::sync::RwLock<InferenceLiveSettings>> {
+        self.live.clone()
+    }
+
+    /// Context size from config (used to estimate prompt budget for agentic loops).
+    pub fn config_context_size(&self) -> u32 {
+        self.config.context_size
+    }
+
+    pub fn models_directory(&self) -> &PathBuf {
+        &self.models_dir
+    }
+
+    /// Scan models directory and update registry.
+    pub async fn scan_models(&self) -> std::io::Result<usize> {
+        let mut count = 0;
+        let mut registry = self.registry.write().await;
+
+        for entry in std::fs::read_dir(&self.models_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.extension().is_some_and(|e| e == "gguf") {
+                if let Ok(info) = ModelInfo::from_path(path) {
+                    registry.register(info);
+                    count += 1;
+                }
+            }
+        }
+
+        tracing::info!(count, "Scanned models directory");
+        Ok(count)
+    }
+
+    /// Get list of available models.
+    pub async fn available_models(&self) -> Vec<ModelInfo> {
+        self.registry.read().await.list()
+    }
+
+    /// Get list of loaded models.
+    pub async fn loaded_models(&self) -> Vec<ModelId> {
+        self.cache.loaded_models().await
+    }
+
+    /// Check if a model is available (in registry).
+    pub async fn has_model(&self, model_id: &str) -> bool {
+        self.registry.read().await.get(model_id).is_some()
+    }
+
+    /// Check if a model is loaded (in cache).
+    pub async fn is_loaded(&self, model_id: &str) -> bool {
+        self.cache.is_loaded(model_id).await
+    }
+
+    /// Load a model into memory.
+    pub async fn load_model(&self, model_id: &str) -> Result<(), InferenceError> {
+        // Check if already loaded
+        if self.cache.is_loaded(model_id).await {
+            return Ok(());
+        }
+
+        // Get model info from registry
+        let info = self
+            .registry
+            .read()
+            .await
+            .get(model_id)
+            .cloned()
+            .ok_or_else(|| InferenceError::ModelNotFound(model_id.to_string()))?;
+
+        tracing::info!(
+            model_id = %model_id,
+            size_mb = info.estimate_ram_mb(),
+            "Loading model"
+        );
+
+        // GGUF weights are loaded lazily when generation runs (`GgufEngine` / `generate_streaming`).
+        // The cache entry records residency for LRU eviction and `is_loaded`.
+        let loaded = LoadedModel {
+            info,
+            loaded_at: Instant::now(),
+            last_used: Instant::now(),
+            ref_count: 0,
+            handle: ModelHandle::Placeholder,
+        };
+
+        self.cache
+            .insert(loaded)
+            .await
+            .map_err(|e| InferenceError::CacheError(e.to_string()))?;
+
+        tracing::info!(model_id = %model_id, "Model loaded");
+        Ok(())
+    }
+
+    /// Unload a model from memory.
+    pub async fn unload_model(&self, model_id: &str) -> Result<(), InferenceError> {
+        // The cache handles this via LRU eviction
+        // For explicit unload, we'd need to add a remove method to cache
+        tracing::info!(model_id = %model_id, "Model unload requested");
+        Ok(())
+    }
+
+    /// Run inference on a model.
+    ///
+    /// When the failover chain is enabled, tries backends in order:
+    /// local GGUF -> (P2P) -> Ollama -> remote API, with circuit breakers.
+    ///
+    /// Otherwise falls back to the legacy path: remote API first, then
+    /// local GGUF, then Ollama.
+    pub async fn generate(
+        &self,
+        request: &GenerateRequest,
+    ) -> Result<GenerateResponse, InferenceError> {
+        // Use failover chain if enabled
+        if let Some(failover) = &self.failover {
+            return failover.execute_with_failover(request).await;
+        }
+
+        // --- Legacy path (no failover chain) ---
+        let start = Instant::now();
+        let live = self.live.read().await;
+
+        if live.remote_api_enabled
+            && !live.remote_api_base_url.trim().is_empty()
+            && !live.remote_api_key.trim().is_empty()
+        {
+            let remote_model = if live.remote_api_model.trim().is_empty() {
+                request.model.as_str()
+            } else {
+                live.remote_api_model.trim()
+            };
+            let r = remote_openai::chat_completion(
+                live.remote_api_base_url.trim(),
+                live.remote_api_key.trim(),
+                remote_model,
+                &request.prompt,
+                request.max_tokens,
+                request.temperature,
+            )
+            .await
+            .map_err(InferenceError::GenerationFailed)?;
+
+            let elapsed = start.elapsed();
+            return Ok(GenerateResponse {
+                text: r.text,
+                tokens_generated: r.tokens_generated,
+                tokens_per_second: if elapsed.as_secs_f64() > 0.0 {
+                    r.tokens_generated as f64 / elapsed.as_secs_f64()
+                } else {
+                    0.0
+                },
+                time_to_first_token_ms: 0,
+                total_time_ms: elapsed.as_millis() as u64,
+                finish_reason: FinishReason::Stop,
+                model_id: remote_model.to_string(),
+            });
+        }
+
+        // Try local GGUF model first when enabled
+        let has_local =
+            live.use_local_gguf && self.registry.read().await.get(&request.model).is_some();
+
+        if has_local {
+            // Get model path from registry
+            let model_path = {
+                let reg = self.registry.read().await;
+                reg.get(&request.model).map(|info| info.path.clone())
+            };
+
+            if let Some(path) = model_path {
+                tracing::info!(
+                    model = %request.model,
+                    path = %path.display(),
+                    "Running local GGUF inference"
+                );
+
+                // Load (or reuse cached) model, then generate.
+                self.gguf
+                    .load(&path)
+                    .map_err(|e| InferenceError::LoadFailed(format!("GGUF load failed: {e}")))?;
+
+                let result = self.gguf.generate(request).map_err(|e| {
+                    InferenceError::GenerationFailed(format!("GGUF generate failed: {e}"))
+                })?;
+
+                return Ok(result);
+            }
+        }
+
+        // No local model (or local disabled) — try Ollama if enabled
+        if live.use_ollama {
+            tracing::info!(
+                model = %request.model,
+                prompt_len = request.prompt.len(),
+                "Routing to Ollama"
+            );
+
+            let prov = ollama::OllamaProvider::new(ollama::OllamaConfig {
+                base_url: live.ollama_url.clone(),
+                timeout_secs: 120,
+            });
+
+            let result = prov
+                .generate(
+                    &request.model,
+                    &request.prompt,
+                    request.max_tokens,
+                    request.temperature,
+                    None,
+                )
+                .await
+                .map_err(InferenceError::GenerationFailed)?;
+
+            return Ok(GenerateResponse {
+                text: result.text,
+                tokens_generated: result.tokens_generated,
+                tokens_per_second: result.tokens_per_second,
+                time_to_first_token_ms: 0,
+                total_time_ms: result.total_time_ms,
+                finish_reason: FinishReason::Stop,
+                model_id: result.model_used,
+            });
+        }
+
+        // Neither local nor Ollama available
+        let no_gguf = std::fs::read_dir(&self.models_dir)
+            .map(|entries| {
+                entries
+                    .filter_map(|e| e.ok())
+                    .filter(|e| e.path().extension().is_some_and(|ext| ext == "gguf"))
+                    .count()
+            })
+            .unwrap_or(0)
+            == 0;
+
+        let hint = if no_gguf {
+            format!(
+                "No inference backend available for '{}'. \
+                Enable Ollama (Settings → Inference → Ollama) or a remote API, \
+                or download a GGUF model. Models dir: {:?}",
+                request.model, self.models_dir
+            )
+        } else {
+            format!(
+                "Model '{}' not found. Available GGUF files exist but may need Ollama \
+                (llama.cpp not wired yet). Enable Ollama in Settings → Inference.",
+                request.model
+            )
+        };
+
+        Err(InferenceError::ModelNotFound(hint))
+    }
+
+    /// Same routing as [`Self::generate`], but streams text: `on_delta` is called for each chunk
+    /// (GGUF token callbacks; Ollama NDJSON deltas; remote API and failover fall back to one chunk).
+    pub async fn generate_streaming<F>(
+        &self,
+        request: &GenerateRequest,
+        mut on_delta: F,
+    ) -> Result<GenerateResponse, InferenceError>
+    where
+        F: FnMut(&str) + Send + 'static,
+    {
+        if let Some(_) = &self.failover {
+            let r = self.generate(request).await?;
+            if !r.text.is_empty() {
+                on_delta(&r.text);
+            }
+            return Ok(r);
+        }
+
+        let start = Instant::now();
+        let live = self.live.read().await;
+
+        if live.remote_api_enabled
+            && !live.remote_api_base_url.trim().is_empty()
+            && !live.remote_api_key.trim().is_empty()
+        {
+            let remote_model = if live.remote_api_model.trim().is_empty() {
+                request.model.as_str()
+            } else {
+                live.remote_api_model.trim()
+            };
+            let r = remote_openai::chat_completion(
+                live.remote_api_base_url.trim(),
+                live.remote_api_key.trim(),
+                remote_model,
+                &request.prompt,
+                request.max_tokens,
+                request.temperature,
+            )
+            .await
+            .map_err(InferenceError::GenerationFailed)?;
+
+            on_delta(&r.text);
+            let elapsed = start.elapsed();
+            return Ok(GenerateResponse {
+                text: r.text.clone(),
+                tokens_generated: r.tokens_generated,
+                tokens_per_second: if elapsed.as_secs_f64() > 0.0 {
+                    r.tokens_generated as f64 / elapsed.as_secs_f64()
+                } else {
+                    0.0
+                },
+                time_to_first_token_ms: 0,
+                total_time_ms: elapsed.as_millis() as u64,
+                finish_reason: FinishReason::Stop,
+                model_id: remote_model.to_string(),
+            });
+        }
+
+        let has_local =
+            live.use_local_gguf && self.registry.read().await.get(&request.model).is_some();
+
+        if has_local {
+            let model_path = {
+                let reg = self.registry.read().await;
+                reg.get(&request.model).map(|info| info.path.clone())
+            };
+
+            if let Some(path) = model_path {
+                drop(live);
+                tracing::info!(
+                    model = %request.model,
+                    path = %path.display(),
+                    "Running local GGUF inference (streaming)"
+                );
+
+                self.gguf
+                    .load(&path)
+                    .map_err(|e| InferenceError::LoadFailed(format!("GGUF load failed: {e}")))?;
+
+                let cb: TokenCallback = Box::new(move |t| on_delta(t));
+                let result = self.gguf.generate_streaming(request, cb).map_err(|e| {
+                    InferenceError::GenerationFailed(format!("GGUF stream failed: {e}"))
+                })?;
+
+                return Ok(result);
+            }
+        }
+
+        if live.use_ollama {
+            let ollama_url = live.ollama_url.clone();
+            drop(live);
+            tracing::info!(
+                model = %request.model,
+                prompt_len = request.prompt.len(),
+                "Routing to Ollama (streaming)"
+            );
+
+            let prov = ollama::OllamaProvider::new(ollama::OllamaConfig {
+                base_url: ollama_url,
+                timeout_secs: 120,
+            });
+
+            let result = prov
+                .generate_streaming(
+                    &request.model,
+                    &request.prompt,
+                    request.max_tokens,
+                    request.temperature,
+                    None,
+                    |s| on_delta(s),
+                )
+                .await
+                .map_err(InferenceError::GenerationFailed)?;
+
+            return Ok(GenerateResponse {
+                text: result.text,
+                tokens_generated: result.tokens_generated,
+                tokens_per_second: result.tokens_per_second,
+                time_to_first_token_ms: 0,
+                total_time_ms: result.total_time_ms,
+                finish_reason: FinishReason::Stop,
+                model_id: result.model_used,
+            });
+        }
+
+        let no_gguf = std::fs::read_dir(&self.models_dir)
+            .map(|entries| {
+                entries
+                    .filter_map(|e| e.ok())
+                    .filter(|e| e.path().extension().is_some_and(|ext| ext == "gguf"))
+                    .count()
+            })
+            .unwrap_or(0)
+            == 0;
+
+        let hint = if no_gguf {
+            format!(
+                "No inference backend available for '{}'. \
+                Enable Ollama (Settings → Inference → Ollama) or a remote API, \
+                or download a GGUF model. Models dir: {:?}",
+                request.model, self.models_dir
+            )
+        } else {
+            format!(
+                "Model '{}' not found. Available GGUF files exist but may need Ollama \
+                (llama.cpp not wired yet). Enable Ollama in Settings → Inference.",
+                request.model
+            )
+        };
+
+        Err(InferenceError::ModelNotFound(hint))
+    }
+
+    /// Resource profile for [`crate::executor::TaskRouter`]: use GGUF-sized RAM/VRAM only when this
+    /// node will actually run **local** GGUF for `model_id` per current live settings and registry.
+    ///
+    /// Ollama-only, remote API, and “model not in local registry” paths use minimal requirements so
+    /// the executor does not treat them like a loaded multi‑GB GGUF.
+    pub async fn routing_resource_requirements(
+        &self,
+        model_id: &str,
+    ) -> crate::executor::task::ResourceRequirements {
+        use crate::executor::task::{InferenceTask, ResourceRequirements};
+
+        if self.failover.is_some() {
+            let live = self.live.read().await;
+            let will_run_local_gguf =
+                live.use_local_gguf && self.registry.read().await.get(model_id).is_some();
+            return if will_run_local_gguf {
+                InferenceTask::new(model_id, "").estimate_requirements()
+            } else {
+                ResourceRequirements::minimal()
+            };
+        }
+
+        let live = self.live.read().await;
+
+        // Legacy `generate` order: remote API → local GGUF → Ollama
+        if live.remote_api_enabled
+            && !live.remote_api_base_url.trim().is_empty()
+            && !live.remote_api_key.trim().is_empty()
+        {
+            return ResourceRequirements::minimal();
+        }
+
+        let has_local = live.use_local_gguf && self.registry.read().await.get(model_id).is_some();
+        if has_local {
+            InferenceTask::new(model_id, "").estimate_requirements()
+        } else {
+            ResourceRequirements::minimal()
+        }
+    }
+
+    /// Get memory usage stats.
+    pub async fn memory_stats(&self) -> MemoryStats {
+        MemoryStats {
+            loaded_models: self.cache.model_count().await,
+            memory_used_mb: self.cache.memory_usage_mb().await,
+            max_memory_mb: self.config.max_memory_mb,
+        }
+    }
+}
+
+/// Model registry for tracking available models.
+pub struct ModelRegistry {
+    models: std::collections::HashMap<ModelId, ModelInfo>,
+}
+
+impl ModelRegistry {
+    pub fn new() -> Self {
+        Self {
+            models: std::collections::HashMap::new(),
+        }
+    }
+
+    pub fn register(&mut self, info: ModelInfo) {
+        self.models.insert(info.id.clone(), info);
+    }
+
+    pub fn get(&self, model_id: &str) -> Option<&ModelInfo> {
+        // Exact match first
+        if let Some(info) = self.models.get(model_id) {
+            return Some(info);
+        }
+        // Prefix match: `llama-3.2-3b` matches `llama-3.2-3b-q4_k_m`
+        // Pick the first (arbitrary but stable since HashMap).
+        self.models
+            .values()
+            .find(|info| info.id.starts_with(model_id))
+    }
+
+    pub fn list(&self) -> Vec<ModelInfo> {
+        self.models.values().cloned().collect()
+    }
+
+    pub fn remove(&mut self, model_id: &str) -> Option<ModelInfo> {
+        self.models.remove(model_id)
+    }
+}
+
+impl Default for ModelRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Inference engine configuration.
+#[derive(Debug, Clone)]
+pub struct InferenceConfig {
+    /// Directory where models are stored
+    pub models_dir: PathBuf,
+    /// Maximum models to keep loaded
+    pub max_loaded_models: usize,
+    /// Maximum memory usage in MB
+    pub max_memory_mb: u32,
+    /// Number of GPU layers to offload (-1 = auto, 0 = CPU only)
+    pub gpu_layers: i32,
+    /// Context size for inference
+    pub context_size: u32,
+    /// Batch size for inference
+    pub batch_size: u32,
+    /// Use Ollama as a provider for models not found locally
+    pub use_ollama: bool,
+    /// Ollama base URL
+    pub ollama_url: String,
+}
+
+impl Default for InferenceConfig {
+    fn default() -> Self {
+        Self {
+            models_dir: crate::bootstrap::base_dir().join("models"),
+            max_loaded_models: 3,
+            max_memory_mb: 16_000, // 16 GB
+            gpu_layers: -1,        // Auto
+            context_size: 4096,
+            batch_size: 512,
+            use_ollama: std::env::var("OLLAMA_BASE_URL").is_ok()
+                || std::env::var("USE_OLLAMA").is_ok_and(|v| v == "1" || v == "true"),
+            ollama_url: std::env::var("OLLAMA_BASE_URL")
+                .unwrap_or_else(|_| "http://localhost:11434".to_string()),
+        }
+    }
+}
+
+/// Request for text generation.
+#[derive(Debug, Clone)]
+pub struct GenerateRequest {
+    /// Model ID to use
+    pub model: String,
+    /// Input prompt
+    pub prompt: String,
+    /// Maximum tokens to generate
+    pub max_tokens: u32,
+    /// Sampling temperature
+    pub temperature: f32,
+    /// Top-p sampling
+    pub top_p: f32,
+    /// Stop sequences
+    pub stop_sequences: Vec<String>,
+}
+
+impl GenerateRequest {
+    pub fn new(model: impl Into<String>, prompt: impl Into<String>) -> Self {
+        Self {
+            model: model.into(),
+            prompt: prompt.into(),
+            max_tokens: 512,
+            temperature: 0.7,
+            top_p: 0.9,
+            stop_sequences: vec![],
+        }
+    }
+
+    pub fn with_max_tokens(mut self, max_tokens: u32) -> Self {
+        self.max_tokens = max_tokens;
+        self
+    }
+
+    pub fn with_temperature(mut self, temperature: f32) -> Self {
+        self.temperature = temperature;
+        self
+    }
+}
+
+/// Response from text generation.
+#[derive(Debug, Clone)]
+pub struct GenerateResponse {
+    /// Generated text
+    pub text: String,
+    /// Number of tokens generated
+    pub tokens_generated: u32,
+    /// Generation speed
+    pub tokens_per_second: f64,
+    /// Time to first token in ms
+    pub time_to_first_token_ms: u64,
+    /// Total generation time in ms
+    pub total_time_ms: u64,
+    /// Why generation stopped
+    pub finish_reason: FinishReason,
+    /// Model that was used
+    pub model_id: ModelId,
+}
+
+/// Why generation stopped.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FinishReason {
+    /// Hit a stop sequence
+    Stop,
+    /// Hit max tokens limit
+    Length,
+    /// Content filter triggered
+    ContentFilter,
+}
+
+/// Memory usage statistics.
+#[derive(Debug, Clone)]
+pub struct MemoryStats {
+    pub loaded_models: usize,
+    pub memory_used_mb: u32,
+    pub max_memory_mb: u32,
+}
+
+/// Inference errors.
+#[derive(Debug, thiserror::Error)]
+pub enum InferenceError {
+    #[error("Model not found: {0}")]
+    ModelNotFound(String),
+
+    #[error("Model load failed: {0}")]
+    LoadFailed(String),
+
+    #[error("Generation failed: {0}")]
+    GenerationFailed(String),
+
+    #[error("Cache error: {0}")]
+    CacheError(String),
+
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::executor::task::ResourceRequirements;
+    use std::sync::Arc;
+    use tempfile::tempdir;
+
+    #[tokio::test]
+    async fn routing_requirements_minimal_when_ollama_only_no_local_registry_match() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("local-8b.gguf"), b"x").unwrap();
+        let config = InferenceConfig {
+            models_dir: dir.path().to_path_buf(),
+            ..Default::default()
+        };
+        let live = Arc::new(tokio::sync::RwLock::new(InferenceLiveSettings {
+            use_local_gguf: true,
+            use_ollama: true,
+            ..Default::default()
+        }));
+        let engine = InferenceEngine::new(config, live).unwrap();
+        engine.scan_models().await.unwrap();
+        // Chat model id is an Ollama name, not the scanned GGUF stem → no local GGUF run
+        let req = engine.routing_resource_requirements("glm-4.7:cloud").await;
+        let minimal = ResourceRequirements::minimal();
+        assert_eq!(req.ram_mb, minimal.ram_mb);
+        assert_eq!(req.vram_mb, minimal.vram_mb);
+    }
+
+    #[tokio::test]
+    async fn routing_requirements_heavy_when_local_gguf_matches_model_id() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("local-8b.gguf"), b"x").unwrap();
+        let config = InferenceConfig {
+            models_dir: dir.path().to_path_buf(),
+            ..Default::default()
+        };
+        let live = Arc::new(tokio::sync::RwLock::new(InferenceLiveSettings {
+            use_local_gguf: true,
+            use_ollama: true,
+            ..Default::default()
+        }));
+        let engine = InferenceEngine::new(config, live).unwrap();
+        engine.scan_models().await.unwrap();
+        let req = engine.routing_resource_requirements("local-8b").await;
+        assert!(req.vram_mb.is_some());
+        assert!(req.ram_mb > ResourceRequirements::minimal().ram_mb);
+    }
+
+    #[tokio::test]
+    async fn test_inference_engine_creation() {
+        let dir = tempdir().unwrap();
+        let config = InferenceConfig {
+            models_dir: dir.path().to_path_buf(),
+            ..Default::default()
+        };
+
+        let live = Arc::new(tokio::sync::RwLock::new(InferenceLiveSettings::default()));
+        let engine = InferenceEngine::new(config, live).unwrap();
+        assert!(engine.available_models().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_scan_empty_directory() {
+        let dir = tempdir().unwrap();
+        let config = InferenceConfig {
+            models_dir: dir.path().to_path_buf(),
+            ..Default::default()
+        };
+
+        let live = Arc::new(tokio::sync::RwLock::new(InferenceLiveSettings::default()));
+        let engine = InferenceEngine::new(config, live).unwrap();
+        let count = engine.scan_models().await.unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[tokio::test]
+    async fn test_model_not_found() {
+        let dir = tempdir().unwrap();
+        let config = InferenceConfig {
+            models_dir: dir.path().to_path_buf(),
+            ..Default::default()
+        };
+
+        let live = Arc::new(tokio::sync::RwLock::new(InferenceLiveSettings::default()));
+        let engine = InferenceEngine::new(config, live).unwrap();
+        let result = engine.load_model("nonexistent").await;
+        assert!(matches!(result, Err(InferenceError::ModelNotFound(_))));
+    }
+}
