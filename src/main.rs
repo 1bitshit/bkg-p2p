@@ -1,16 +1,16 @@
-//! bkg-peer - Decentralized P2P AI Agent Network
+//! bkg-p2p - Decentralized P2P AI Agent Network
 //!
 //! One binary. Distributed intelligence. Token-powered autonomy.
 
 use clap::Parser;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use bkg-peer::bootstrap;
-use bkg-peer::cli::{Cli, Command};
+use bkg_p2p::bootstrap;
+use bkg_p2p::cli::{Cli, Command};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Load environment variables from .bkg-peer/.env if present
+    // Load environment variables from .bkg_p2p/.env if present
     bootstrap::load_env();
 
     // Parse CLI arguments
@@ -18,15 +18,15 @@ async fn main() -> anyhow::Result<()> {
 
     // Silence llama.cpp/ggml logs unless --debug is passed
     if !cli.debug {
-        bkg-peer::inference::silence_llama_logs();
+        bkg_p2p::inference::silence_llama_logs();
     }
 
     // For interactive mode, use minimal logging
     let log_level = match &cli.command {
         None | Some(Command::Start) | Some(Command::Chat(_)) | Some(Command::Run(_)) => {
-            "bkg-peer=warn"
+            "bkg_p2p=warn"
         }
-        _ => "bkg-peer=info",
+        _ => "bkg_p2p=info",
     };
 
     // Initialize tracing
@@ -42,62 +42,62 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         // No command = interactive mode
         None | Some(Command::Start) => {
-            bkg-peer::cli::start::run_interactive().await?;
+            bkg_p2p::cli::start::run_interactive().await?;
         }
         Some(Command::Chat(args)) => {
-            bkg-peer::cli::chat::run(args).await?;
+            bkg_p2p::cli::chat::run(args).await?;
         }
         // Ollama/vLLM-style commands
         Some(Command::Run(args)) => {
-            bkg-peer::cli::run::run(args).await?;
+            bkg_p2p::cli::run::run(args).await?;
         }
         Some(Command::Pull(args)) => {
-            bkg-peer::cli::run::pull(args).await?;
+            bkg_p2p::cli::run::pull(args).await?;
         }
         Some(Command::List) => {
-            bkg-peer::cli::run::list().await?;
+            bkg_p2p::cli::run::list().await?;
         }
         Some(Command::Ps) => {
-            bkg-peer::cli::run::ps().await?;
+            bkg_p2p::cli::run::ps().await?;
         }
         Some(Command::Models(args)) => {
-            bkg-peer::cli::models::run(args).await?;
+            bkg_p2p::cli::models::run(args).await?;
         }
         Some(Command::Peers(args)) => {
-            bkg-peer::cli::peers::run(args).await?;
+            bkg_p2p::cli::peers::run(args).await?;
         }
         Some(Command::Serve(args)) => {
-            bkg-peer::cli::serve::run(args).await?;
+            bkg_p2p::cli::serve::run(args).await?;
         }
         Some(Command::Agent { cmd }) => {
-            bkg-peer::cli::agent::run(cmd).await?;
+            bkg_p2p::cli::agent::run(cmd).await?;
         }
         Some(Command::Network { cmd }) => {
-            bkg-peer::cli::network::run(cmd).await?;
+            bkg_p2p::cli::network::run(cmd).await?;
         }
         Some(Command::Wallet { cmd }) => {
-            bkg-peer::cli::wallet::run(cmd).await?;
+            bkg_p2p::cli::wallet::run(cmd).await?;
         }
         Some(Command::Tool { cmd }) => {
-            bkg-peer::cli::tool::run(cmd).await?;
+            bkg_p2p::cli::tool::run(cmd).await?;
         }
         Some(Command::Skill { cmd }) => {
-            bkg-peer::cli::skill::run(cmd).await?;
+            bkg_p2p::cli::skill::run(cmd).await?;
         }
         Some(Command::Vector(args)) => {
-            bkg-peer::cli::vector::run(args).await?;
+            bkg_p2p::cli::vector::run(args).await?;
         }
         Some(Command::Job(args)) => {
-            bkg-peer::cli::job::run(args).await?;
+            bkg_p2p::cli::job::run(args).await?;
         }
         Some(Command::Test(args)) => {
-            bkg-peer::cli::test::run(args).await?;
+            bkg_p2p::cli::test::run(args).await?;
         }
         Some(Command::Doctor) => {
-            bkg-peer::cli::doctor::run().await?;
+            bkg_p2p::cli::doctor::run().await?;
         }
         Some(Command::Version) => {
-            println!("bkg-peer {}", env!("CARGO_PKG_VERSION"));
+            println!("bkg-p2p {}", env!("CARGO_PKG_VERSION"));
         }
     }
 

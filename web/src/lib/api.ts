@@ -28,7 +28,7 @@ function hostForApiUrl(hostname: string): string {
  *   (`localhost` vs `127.0.0.1`) and hits the node directly (avoids proxy HTML 404s).
  * - **Production / `bkg-peer serve --web`:** empty → same-origin relative paths.
  */
-function bkg-peerApiBase(): string {
+function bkgPeerApiBase(): string {
   const raw = import.meta.env.VITE_BKG_PEER_API as string | undefined
   const explicit = raw?.trim()
   if (explicit) return explicit.replace(/\/$/, "")
@@ -50,13 +50,13 @@ function bkg-peerApiBase(): string {
 
 export function apiUrl(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`
-  const b = bkg-peerApiBase()
+  const b = bkgPeerApiBase()
   return b ? `${b}${p}` : p
 }
 
 /** WebSocket URL for control channel; follows `VITE_BKG_PEER_API` host when set. */
-export function bkg-peerWsUrl(): string {
-  const b = bkg-peerApiBase()
+export function bkgPeerWsUrl(): string {
+  const b = bkgPeerApiBase()
   if (b) {
     let u: URL
     try {

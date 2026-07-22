@@ -133,7 +133,7 @@ export function WorkspaceShell() {
 
   return (
     <WorkspaceNavProvider value={navValue}>
-      <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 overflow-hidden bg-background text-foreground">
+      <div className="flex h-[100dvh] max-h-[100dvh] min-h-0 min-w-0 overflow-auto bg-background text-foreground">
         {/* Desktop sidebar */}
         <aside
           className={cn(

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react"
 
-import { bkg-peerWsUrl } from "@/lib/api"
+import { bkgPeerWsUrl } from "@/lib/api"
 
 type WsStatusPayload = {
   cpu_usage?: number
@@ -35,7 +35,7 @@ export function useControlWebSocket(handlers: {
   })
 
   useEffect(() => {
-    const ws = new WebSocket(bkg-peerWsUrl())
+    const ws = new WebSocket(bkgPeerWsUrl())
 
     ws.onmessage = (ev) => {
       try {
