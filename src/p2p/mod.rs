@@ -8,7 +8,7 @@ pub mod provider;
 pub mod provider_tracker;
 mod resource;
 
-pub use behaviour::PeerclawdBehaviour;
+pub use behaviour::BkgPeerdBehaviour;
 pub use events::NetworkEvent;
 pub use provider::{
     ModelOffering, ProviderBackend, ProviderManifest, ProviderRateLimits, ProviderSharingConfig,
@@ -35,7 +35,7 @@ use std::sync::Arc;
 /// Network controller for managing P2P connections.
 pub struct Network {
     /// The libp2p swarm - public for direct polling in serve loop
-    pub swarm: Swarm<PeerclawdBehaviour>,
+    pub swarm: Swarm<BkgPeerdBehaviour>,
     event_tx: broadcast::Sender<NetworkEvent>,
     local_peer_id: PeerId,
     connected_peers: HashSet<PeerId>,
@@ -144,7 +144,7 @@ impl Network {
     /// This is called from the serve loop to drive the network.
     pub async fn process_swarm_event(
         &mut self,
-        event: SwarmEvent<behaviour::PeerclawdBehaviourEvent>,
+        event: SwarmEvent<behaviour::BkgPeerdBehaviourEvent>,
     ) -> Option<NetworkEvent> {
         self.handle_swarm_event_internal(event).await
     }
@@ -152,7 +152,7 @@ impl Network {
     /// Handle a swarm event internally.
     async fn handle_swarm_event_internal(
         &mut self,
-        event: SwarmEvent<behaviour::PeerclawdBehaviourEvent>,
+        event: SwarmEvent<behaviour::BkgPeerdBehaviourEvent>,
     ) -> Option<NetworkEvent> {
         match event {
             SwarmEvent::NewListenAddr { address, .. } => {
@@ -172,7 +172,7 @@ impl Network {
                 Some(NetworkEvent::PeerDisconnected(peer_id))
             }
 
-            SwarmEvent::Behaviour(behaviour::PeerclawdBehaviourEvent::Mdns(
+            SwarmEvent::Behaviour(behaviour::BkgPeerdBehaviourEvent::Mdns(
                 mdns::Event::Discovered(peers),
             )) => {
                 for (peer_id, addr) in &peers {
@@ -193,7 +193,7 @@ impl Network {
                     })
             }
 
-            SwarmEvent::Behaviour(behaviour::PeerclawdBehaviourEvent::Mdns(
+            SwarmEvent::Behaviour(behaviour::BkgPeerdBehaviourEvent::Mdns(
                 mdns::Event::Expired(peers),
             )) => {
                 for (peer_id, _) in peers {
@@ -202,14 +202,14 @@ impl Network {
                 None
             }
 
-            SwarmEvent::Behaviour(behaviour::PeerclawdBehaviourEvent::Kademlia(
+            SwarmEvent::Behaviour(behaviour::BkgPeerdBehaviourEvent::Kademlia(
                 kad::Event::RoutingUpdated { peer, .. },
             )) => {
                 tracing::debug!("Kademlia routing updated for peer: {}", peer);
                 None
             }
 
-            SwarmEvent::Behaviour(behaviour::PeerclawdBehaviourEvent::Gossipsub(event)) => {
+            SwarmEvent::Behaviour(behaviour::BkgPeerdBehaviourEvent::Gossipsub(event)) => {
                 if let libp2p::gossipsub::Event::Message { message, .. } = event {
                     Some(NetworkEvent::GossipMessage {
                         topic: message.topic.to_string(),
@@ -221,7 +221,7 @@ impl Network {
                 }
             }
 
-            SwarmEvent::Behaviour(behaviour::PeerclawdBehaviourEvent::A2aRpc(ev)) => {
+            SwarmEvent::Behaviour(behaviour::BkgPeerdBehaviourEvent::A2aRpc(ev)) => {
                 use libp2p::request_response::{Event as RrEv, Message as RrMsg};
                 match ev {
                     RrEv::Message { peer, message } => match message {
@@ -260,7 +260,7 @@ impl Network {
                 }
             }
 
-            SwarmEvent::Behaviour(behaviour::PeerclawdBehaviourEvent::Identify(event)) => {
+            SwarmEvent::Behaviour(behaviour::BkgPeerdBehaviourEvent::Identify(event)) => {
                 if let libp2p::identify::Event::Received { peer_id, info, .. } = event {
                     tracing::debug!(
                         "Identify received from {}: {} with {} addresses",

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0891B2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06B6D4;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="90" fill="url(#grad1)" opacity="0.1"/>
+  <circle cx="100" cy="100" r="70" fill="url(#grad1)" opacity="0.2"/>
+  <circle cx="100" cy="100" r="50" fill="url(#grad1)"/>
+  <text x="100" y="115" font-family="Inter, system-ui, sans-serif" font-size="32" font-weight="bold" fill="white" text-anchor="middle">BKG</text>
+  <circle cx="40" cy="40" r="12" fill="#0891B2"/>
+  <circle cx="160" cy="40" r="12" fill="#0891B2"/>
+  <circle cx="40" cy="160" r="12" fill="#0891B2"/>
+  <circle cx="160" cy="160" r="12" fill="#0891B2"/>
+  <line x1="52" y1="40" x2="88" y2="70" stroke="#0891B2" stroke-width="2" opacity="0.6"/>
+  <line x1="148" y1="40" x2="112" y2="70" stroke="#0891B2" stroke-width="2" opacity="0.6"/>
+  <line x1="52" y1="160" x2="88" y2="130" stroke="#0891B2" stroke-width="2" opacity="0.6"/>
+  <line x1="148" y1="160" x2="112" y2="130" stroke="#0891B2" stroke-width="2" opacity="0.6"/>
+</svg>

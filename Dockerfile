@@ -26,22 +26,22 @@ RUN apt-get update && apt-get install -y \
     curl jq poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /peerclaw
+WORKDIR /bkg-peer
 
 # Copy binary
-COPY --from=builder /app/target/release/peerclaw /usr/local/bin/peerclaw
+COPY --from=builder /app/target/release/bkg-peer /usr/local/bin/bkg-peer
 
 # Copy frontend dist
-COPY --from=frontend /app/web/dist /peerclaw/web/dist
+COPY --from=frontend /app/web/dist /bkg-peer/web/dist
 
 # Copy templates and prompts
-COPY templates/ /peerclaw/templates/
-COPY prompts/ /peerclaw/prompts/
+COPY templates/ /bkg-peer/templates/
+COPY prompts/ /bkg-peer/prompts/
 
 # Data directory
-RUN mkdir -p /data/.peerclaw
-ENV PEERCLAW_HOME=/data/.peerclaw
-ENV PEERCLAW_WEB_DIST=/peerclaw/web/dist
+RUN mkdir -p /data/.bkg-peer
+ENV BKG_PEER_HOME=/data/.bkg-peer
+ENV BKG_PEER_WEB_DIST=/bkg-peer/web/dist
 
 # Default port
 EXPOSE 8080
@@ -51,5 +51,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
     CMD curl -sf http://localhost:8080/api/status || exit 1
 
 # Default: serve with web dashboard, connect to Ollama on host
-ENTRYPOINT ["peerclaw"]
+ENTRYPOINT ["bkg-peer"]
 CMD ["serve", "--web", "0.0.0.0:8080", "--ollama"]

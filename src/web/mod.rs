@@ -773,7 +773,7 @@ async fn api_agent_card_well_known(
     } else {
         base
     };
-    Json(crate::a2a::AgentCard::bkg-peer_default(
+    Json(crate::a2a::AgentCard::bkg_peer_default(
         format!("bkg-peer-{short}"),
         "bkg-peer P2P agent node",
         base,

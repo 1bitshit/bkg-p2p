@@ -1,6 +1,6 @@
 """Example: validate a tiny crew spec (requires `bkg-peer serve --web ...`)."""
 
-from bkg-peer import PeerclawClient
+from bkg_peer import BkgPeerClient
 
 SPEC = {
     "name": "demo",
@@ -18,5 +18,5 @@ SPEC = {
 }
 
 if __name__ == "__main__":
-    c = PeerclawClient()
+    c = BkgPeerClient()
     print(c.validate_crew(SPEC))

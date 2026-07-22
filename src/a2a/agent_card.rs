@@ -46,7 +46,7 @@ pub struct AgentCard {
 }
 
 impl AgentCard {
-    pub fn bkg-peer_default(
+    pub fn bkg_peer_default(
         name: impl Into<String>,
         description: impl Into<String>,
         base_url: String,

@@ -8,7 +8,7 @@ import httpx
 Json = dict[str, Any] | list[Any] | Any
 
 
-class PeerclawClient:
+class BkgPeerClient:
     """Sync + async client for a node's `--web` HTTP API."""
 
     def __init__(self, base_url: str | None = None, *, timeout: float = 120.0) -> None:

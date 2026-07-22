@@ -1,8 +1,8 @@
-from bkg-peer.client import PeerclawClient
+from bkg_peer.client import BkgPeerClient
 
 
 def test_base_url_normalization():
-    c = PeerclawClient("http://127.0.0.1:9000/")
+    c = BkgPeerClient("http://127.0.0.1:9000/")
     assert c._url("/api/status") == "http://127.0.0.1:9000/api/status"
     assert c._url("api/status") == "http://127.0.0.1:9000/api/status"
 

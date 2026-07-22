@@ -14,7 +14,7 @@ use crate::config::P2pConfig;
 
 /// Combined network behaviour for bkg-peer.
 #[derive(NetworkBehaviour)]
-pub struct PeerclawdBehaviour {
+pub struct BkgPeerdBehaviour {
     /// JSON-RPC envelope over request-response (A2A mesh bridge).
     pub a2a_rpc: request_response::json::Behaviour<A2aRpcWireRequest, A2aRpcWireResponse>,
 
@@ -35,7 +35,7 @@ pub struct PeerclawdBehaviour {
 pub fn build_swarm(
     keypair: Keypair,
     _config: &P2pConfig,
-) -> anyhow::Result<Swarm<PeerclawdBehaviour>> {
+) -> anyhow::Result<Swarm<BkgPeerdBehaviour>> {
     let local_peer_id = PeerId::from(keypair.public());
 
     let a2a_proto = StreamProtocol::new("/bkg-peer/a2a-rpc/1.0.0");
@@ -84,7 +84,7 @@ pub fn build_swarm(
                     .with_agent_version(format!("bkg-peer/{}", env!("CARGO_PKG_VERSION"))),
             );
 
-            Ok(PeerclawdBehaviour {
+            Ok(BkgPeerdBehaviour {
                 a2a_rpc,
                 kademlia,
                 mdns,
