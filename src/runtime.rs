@@ -841,7 +841,7 @@ impl Runtime {
             .into_iter()
             .map(|m| m.name)
             .collect();
-        let card = crate::a2a::AgentCard::bkg_peer_default(
+        let card = crate::a2a::AgentCard::bkg_p2p_default(
             format!("bkg-peer-{}", &self.local_peer_id.to_string()[..8.min(8)]),
             "bkg-peer P2P agent node",
             public_base_url.trim_end_matches('/').to_string(),
