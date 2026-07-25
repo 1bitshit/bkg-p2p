@@ -213,6 +213,8 @@ pub struct WebState {
     pub vector_store: Option<Arc<crate::vector::VectorStore>>,
     /// When true (`bkg-peer serve -V`), agentic tool calls log args + results to stderr (see unified loop).
     pub verbose_agentic_io: bool,
+    /// Actual P2P listen multiaddresses (populated from swarm after binding).
+    pub listen_addresses: Arc<tokio::sync::RwLock<Vec<String>>>,
     /// A2A task store + discovered peer agent cards (shared with P2P).
     pub a2a: Arc<crate::a2a::A2aState>,
     /// Public base URL for this node's HTTP surface (e.g. `http://127.0.0.1:8080`) for Agent Card.
@@ -403,6 +405,7 @@ fn api_router() -> Router<Arc<WebState>> {
         .route("/agents/library/:id", delete(api_agent_library_delete))
         .route("/status", get(api_status))
         .route("/onboarding", get(api_onboarding))
+        .route("/network/multiaddrs", get(api_network_multiaddrs))
         .route("/peers/dial", post(api_peers_dial))
         .route("/peers/network", get(api_peers_network))
         .route("/peers", get(api_peers))
@@ -532,6 +535,7 @@ pub fn create_web_state(
         wallet: None,
         vector_store: Some(crate::vector::get_or_init_vector_store()),
         verbose_agentic_io: false,
+        listen_addresses: Arc::new(tokio::sync::RwLock::new(Vec::new())),
         a2a: crate::a2a::A2aState::new(),
         a2a_public_base_url: "http://127.0.0.1:8080".to_string(),
         crew_store: crate::crew::CrewRunStore::new(),
@@ -583,6 +587,7 @@ pub fn create_web_state_with_channels(
         wallet: None,
         vector_store: Some(crate::vector::get_or_init_vector_store()),
         verbose_agentic_io: false,
+        listen_addresses: Arc::new(tokio::sync::RwLock::new(Vec::new())),
         a2a: crate::a2a::A2aState::new(),
         a2a_public_base_url: "http://127.0.0.1:8080".to_string(),
         crew_store: crate::crew::CrewRunStore::new(),
@@ -633,6 +638,7 @@ pub fn create_web_state_with_inference(
         wallet: None,
         vector_store: Some(crate::vector::get_or_init_vector_store()),
         verbose_agentic_io: false,
+        listen_addresses: Arc::new(tokio::sync::RwLock::new(Vec::new())),
         a2a: crate::a2a::A2aState::new(),
         a2a_public_base_url: "http://127.0.0.1:8080".to_string(),
         crew_store: crate::crew::CrewRunStore::new(),
@@ -683,6 +689,7 @@ pub fn create_web_state_with_swarm(
         wallet: None,
         vector_store: Some(crate::vector::get_or_init_vector_store()),
         verbose_agentic_io: false,
+        listen_addresses: Arc::new(tokio::sync::RwLock::new(Vec::new())),
         a2a: crate::a2a::A2aState::new(),
         a2a_public_base_url: "http://127.0.0.1:8080".to_string(),
         crew_store: crate::crew::CrewRunStore::new(),
@@ -1106,6 +1113,28 @@ async fn api_status(State(state): State<Arc<WebState>>) -> Json<StatusResponse> 
         active_inference: resource_state.active_inference_tasks,
         active_web: resource_state.active_web_tasks,
         active_wasm: resource_state.active_wasm_tasks,
+    })
+}
+
+#[derive(Serialize)]
+struct MultiaddrsResponse {
+    peer_id: String,
+    multiaddrs: Vec<String>,
+}
+
+async fn api_network_multiaddrs(
+    State(state): State<Arc<WebState>>,
+) -> Json<MultiaddrsResponse> {
+    let peer_id = state.local_peer_id.to_string();
+    let addrs = state.listen_addresses.read().await.clone();
+    // Append /p2p/<peer_id> to each address so they're shareable
+    let multiaddrs: Vec<String> = addrs
+        .iter()
+        .map(|a| format!("{}/p2p/{}", a.trim_end_matches('/'), peer_id))
+        .collect();
+    Json(MultiaddrsResponse {
+        peer_id,
+        multiaddrs,
     })
 }
 

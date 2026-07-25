@@ -19,6 +19,9 @@ pub enum NetworkCommand {
 
     /// Show local node identity
     Identity,
+
+    /// Show multiaddresses to share with other peers
+    Multiaddrs,
 }
 
 pub async fn run(cmd: NetworkCommand) -> anyhow::Result<()> {
@@ -34,6 +37,9 @@ pub async fn run(cmd: NetworkCommand) -> anyhow::Result<()> {
         }
         NetworkCommand::Identity => {
             show_identity().await?;
+        }
+        NetworkCommand::Multiaddrs => {
+            show_multiaddrs().await?;
         }
     }
 
@@ -208,6 +214,77 @@ async fn show_identity() -> anyhow::Result<()> {
     );
     println!("Key File:      {}", identity_path.display());
     println!("Algorithm:     Ed25519");
+
+    Ok(())
+}
+
+async fn show_multiaddrs() -> anyhow::Result<()> {
+    let identity_path = bootstrap::identity_path();
+    if !identity_path.exists() {
+        println!("No identity found. Run 'bkg-peer serve' first.");
+        return Ok(());
+    }
+    let identity = NodeIdentity::load(&identity_path)?;
+    let peer_id = identity.peer_id();
+
+    // Try the running node's API first (has actual bound ports)
+    let config_path = bootstrap::config_path();
+    let web_addr = if config_path.exists() {
+        let config_str = std::fs::read_to_string(&config_path).unwrap_or_default();
+        let config: toml::Value =
+            toml::from_str(&config_str).unwrap_or(toml::Value::Table(Default::default()));
+        config
+            .get("web")
+            .and_then(|w| w.get("listen_addr"))
+            .and_then(|a| a.as_str())
+            .unwrap_or("127.0.0.1:8080")
+            .to_string()
+    } else {
+        "127.0.0.1:8080".to_string()
+    };
+
+    match reqwest::Client::new()
+        .get(format!("http://{}/api/network/multiaddrs", web_addr))
+        .timeout(std::time::Duration::from_secs(2))
+        .send()
+        .await
+    {
+        Ok(resp) if resp.status().is_success() => {
+            if let Ok(json) = resp.json::<serde_json::Value>().await {
+                if let Some(addrs) = json.get("multiaddrs").and_then(|v| v.as_array()) {
+                    if !addrs.is_empty() {
+                        println!("Multiaddresses (share these with other peers):");
+                        println!("{}", "=".repeat(50));
+                        for addr in addrs {
+                            if let Some(s) = addr.as_str() {
+                                println!("  {}", s);
+                            }
+                        }
+                        println!("\nPeer ID: {}", peer_id);
+                        println!("\nConnect from another node:");
+                        println!("  bkg-peer peers join <multiaddr>");
+                        return Ok(());
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+
+    // Fallback: read from config (static ports only; port=0 needs running node)
+    println!("Multiaddresses:");
+    println!("{}", "=".repeat(50));
+    let config = crate::config::Config::load()?;
+    for addr in &config.p2p.listen_addresses {
+        let addr = addr.trim_end_matches('/');
+        let full = format!("{}/p2p/{}", addr, peer_id);
+        println!("  {}", full);
+    }
+    println!("\nPeer ID: {}", peer_id);
+    if config.p2p.listen_addresses.iter().any(|a| a.contains("/tcp/0")) {
+        println!("\nNote: Port 0 = dynamic. Start the node first for actual port numbers,");
+        println!("      then run 'bkg-peer network multiaddrs' again.");
+    }
 
     Ok(())
 }

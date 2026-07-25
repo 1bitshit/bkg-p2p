@@ -16,6 +16,7 @@ pub const DEFAULT_MODEL_NAME: &str = "llama-3.2-3b";
 
 /// Root configuration for bkg-peer.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Config {
     /// P2P networking configuration
     pub p2p: P2pConfig,
@@ -141,6 +142,7 @@ impl Config {
 
 /// P2P networking configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct P2pConfig {
     /// Listen addresses for P2P connections
     pub listen_addresses: Vec<String>,
@@ -172,6 +174,7 @@ impl Default for P2pConfig {
 
 /// Web dashboard configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct WebConfig {
     /// Enable web dashboard
     pub enabled: bool,
@@ -207,6 +210,7 @@ pub struct ResourcesConfig {
 
 /// Database configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct DatabaseConfig {
     /// Path to the database file
     pub path: PathBuf,
@@ -222,6 +226,7 @@ impl Default for DatabaseConfig {
 
 /// Agent configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct AgentConfig {
     /// Maximum concurrent agents
     pub max_agents: usize,
@@ -245,6 +250,7 @@ impl Default for AgentConfig {
 
 /// Inference engine configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct InferenceConfig {
     /// Directory for model storage
     pub models_dir: PathBuf,
@@ -316,6 +322,7 @@ impl Default for InferenceConfig {
 
 /// Task executor configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct ExecutorConfig {
     /// CPU utilization threshold for local execution (0.0 - 1.0)
     pub local_utilization_threshold: f64,
@@ -358,6 +365,7 @@ impl Default for ExecutorConfig {
 
 /// WASM sandbox configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct WasmConfig {
     /// Directory for WASM tools
     pub tools_dir: PathBuf,
@@ -385,6 +393,7 @@ impl Default for WasmConfig {
 /// Simple accounting for P2P job execution. Tokens track resource usage
 /// across the mesh; on-chain settlement is deferred to v1.0.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct EconomyConfig {
     /// Enable token accounting. When false, jobs execute without payment.
     pub enabled: bool,
@@ -410,6 +419,7 @@ impl Default for EconomyConfig {
 ///
 /// Controls whether this node shares its inference capacity with network peers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct ProviderSharingConfig {
     /// Enable sharing local inference with network peers
     pub enabled: bool,

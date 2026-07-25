@@ -12,9 +12,28 @@ use tokio::sync::{mpsc, Mutex};
 use super::{FinishReason, GenerateRequest, GenerateResponse, InferenceError, ModelId};
 
 #[cfg(feature = "local-inference")]
-static GLOBAL_LLAMA_BACKEND_INIT: std::sync::Once = std::sync::Once::new();
+use std::sync::OnceLock;
+
+/// Global llama.cpp backend — initialized exactly once, never dropped until process exit.
+/// `LlamaBackend` manages a global `AtomicBool`; constructing extras causes panics.
 #[cfg(feature = "local-inference")]
-static mut GLOBAL_LLAMA_BACKEND: Option<llama_cpp_2::llama_backend::LlamaBackend> = None;
+static GLOBAL_LLAMA_BACKEND: OnceLock<Option<llama_cpp_2::llama_backend::LlamaBackend>> =
+    OnceLock::new();
+
+#[cfg(feature = "local-inference")]
+fn get_llama_backend() -> Result<&'static llama_cpp_2::llama_backend::LlamaBackend, GgufError> {
+    let opt = GLOBAL_LLAMA_BACKEND.get_or_init(|| {
+        match llama_cpp_2::llama_backend::LlamaBackend::init() {
+            Ok(b) => Some(b),
+            Err(e) => {
+                tracing::error!(error = %e, "Failed to initialize llama.cpp backend");
+                None
+            }
+        }
+    });
+    opt.as_ref()
+        .ok_or_else(|| GgufError::LoadFailed("Failed to initialize llama.cpp backend".into()))
+}
 
 /// Configuration for GGUF inference.
 #[derive(Debug, Clone)]
@@ -270,7 +289,6 @@ impl GgufBackend for PlaceholderBackend {
 #[cfg(feature = "local-inference")]
 pub struct LlamaCppBackend {
     config: GgufConfig,
-    backend: llama_cpp_2::llama_backend::LlamaBackend,
 }
 
 #[cfg(feature = "local-inference")]
@@ -307,23 +325,9 @@ impl LlamaCppBackend {
             "Initializing llama.cpp backend"
         );
 
-        let mut init_ok = false;
-        GLOBAL_LLAMA_BACKEND_INIT.call_once(|| {
-            match llama_cpp_2::llama_backend::LlamaBackend::init() {
-                Ok(b) => {
-                    unsafe { GLOBAL_LLAMA_BACKEND = Some(b) };
-                    init_ok = true;
-                }
-                Err(e) => tracing::warn!(error = %e, "Global llama backend init failed"),
-            }
-        });
+        get_llama_backend()?;
 
-        // The backend is a zero-sized type; construct a token directly.
-        // If the global init succeeded, we use that token; otherwise,
-        // LlamaBackend::init() was already called by a prior instance.
-        let backend = llama_cpp_2::llama_backend::LlamaBackend {};
-
-        Ok(Self { config, backend })
+        Ok(Self { config })
     }
 }
 
@@ -345,7 +349,8 @@ impl GgufBackend for LlamaCppBackend {
         };
         let model_params = LlamaModelParams::default().with_n_gpu_layers(gpu_layers);
 
-        let model = LlamaModel::load_from_file(&self.backend, path, &model_params)
+        let backend = get_llama_backend()?;
+        let model = LlamaModel::load_from_file(backend, path, &model_params)
             .map_err(|e| GgufError::LoadFailed(format!("{:?}", e)))?;
 
         let id = path
@@ -417,11 +422,13 @@ impl GgufBackend for LlamaCppBackend {
             .with_n_threads(self.config.n_threads as i32)
             .with_n_threads_batch(self.config.n_threads as i32);
 
+        let backend = get_llama_backend()?;
+
         // Create context
         let mut ctx = inner
             .model
             .model
-            .new_context(&self.backend, ctx_params)
+            .new_context(backend, ctx_params)
             .map_err(|e| {
                 GgufError::GenerationFailed(format!("Failed to create context: {:?}", e))
             })?;
@@ -593,11 +600,13 @@ impl GgufBackend for LlamaCppBackend {
             .with_n_threads(self.config.n_threads as i32)
             .with_n_threads_batch(self.config.n_threads as i32);
 
+        let backend = get_llama_backend()?;
+
         // Create context
         let mut ctx = inner
             .model
             .model
-            .new_context(&self.backend, ctx_params)
+            .new_context(backend, ctx_params)
             .map_err(|e| {
                 GgufError::GenerationFailed(format!("Failed to create context: {:?}", e))
             })?;
