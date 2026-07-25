@@ -6,10 +6,11 @@ mod behaviour;
 mod envelope;
 mod events;
 pub mod invite;
-pub mod permissions;
+mod permissions;
 pub mod provider;
 pub mod provider_tracker;
 mod resource;
+pub mod tool_manifest;
 pub mod transfer;
 
 pub use behaviour::BkgPeerdBehaviour;

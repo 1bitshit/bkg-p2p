@@ -270,7 +270,8 @@ Ok(Self {
         network.subscribe(crate::crew::POD_TOPIC)?;
         let world_global = crate::crew::world_topic("global");
         network.subscribe(world_global.as_str())?;
-        tracing::info!("Subscribed to job marketplace, provider, skills, A2A, resources, crew, pod, and world (global) topics");
+        network.subscribe(crate::p2p::tool_manifest::TOOL_MANIFEST_TOPIC)?;
+        tracing::info!("Subscribed to job marketplace, provider, skills, A2A, resources, crew, pod, world (global), and tool-manifest topics");
         Ok(())
     }
 
@@ -331,6 +332,45 @@ Ok(Self {
         tracing::info!(
             models = manifest.models.len(),
             "Advertised provider manifest to network"
+        );
+
+        Ok(())
+    }
+
+    /// Advertise our registered tools to the P2P network via GossipSub.
+    pub async fn advertise_tools(&self) -> anyhow::Result<()> {
+        let tools = self.tools.list_tools().await;
+        if tools.is_empty() {
+            return Ok(());
+        }
+
+        let local_peer_id = self.local_peer_id.to_string();
+        let mut advert = crate::p2p::tool_manifest::ToolManifestAdvert::new(
+            &local_peer_id,
+        );
+
+        for tool_info in &tools {
+            let manifest = crate::p2p::tool_manifest::ToolManifest::new(
+                &tool_info.name,
+                &tool_info.description,
+                "builtin",
+                serde_json::json!({}),
+                false,
+                vec![],
+                &local_peer_id,
+            );
+            advert.add_tool(manifest);
+        }
+
+        let data = rmp_serde::to_vec(&advert)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize tool advert: {}", e))?;
+
+        let mut network = self.network.write().await;
+        network.publish(crate::p2p::tool_manifest::TOOL_MANIFEST_TOPIC, data)?;
+
+        tracing::info!(
+            tools = advert.tools.len(),
+            "Advertised tool manifest to network"
         );
 
         Ok(())
@@ -543,7 +583,26 @@ Ok(Self {
                                 "Job status update"
                             );
                         }
-                        _ => {}
+                        }
+                    }
+                }
+            }
+            t if t == crate::p2p::tool_manifest::TOOL_MANIFEST_TOPIC => {
+                if let Ok(advert) =
+                    rmp_serde::from_slice::<crate::p2p::tool_manifest::ToolManifestAdvert>(&data)
+                {
+                    tracing::info!(
+                        peer = %advert.peer_id,
+                        tools = advert.tools.len(),
+                        "Received tool manifest advertisement"
+                    );
+                    for tool in &advert.tools {
+                        tracing::info!(
+                            tool.name,
+                            category = %tool.category,
+                            local_only = tool.local_only,
+                            "  Discovered tool"
+                        );
                     }
                 }
             }
