@@ -96,7 +96,7 @@ pub struct ModelOffering {
     pub model_name: String,
     /// Context window size
     pub context_size: u32,
-    /// Price per 1k tokens in μPCLAW
+    /// Price per 1k tokens in μBKG
     pub price_per_1k_tokens: u64,
     /// Maximum tokens per request
     pub max_tokens_per_request: u32,

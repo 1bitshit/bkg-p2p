@@ -81,7 +81,7 @@ impl fmt::Display for ResourceType {
     }
 }
 
-/// Base pricing rates for resources (in μPCLAW).
+/// Base pricing rates for resources (in μBKG).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResourcePricing {
     /// Price per 1K tokens for small models (7B-13B)
@@ -116,19 +116,19 @@ impl Default for ResourcePricing {
     fn default() -> Self {
         Self {
             // From BKG_PEERD-TOKEN-ECONOMY.md indicative rates
-            inference_small_per_1k: to_micro(0.5), // 0.5 PCLAW per 1K tokens
-            inference_medium_per_1k: to_micro(2.0), // 2.0 PCLAW per 1K tokens
-            inference_large_per_1k: to_micro(5.0), // 5.0 PCLAW per 1K tokens
-            embedding_per_1k: to_micro(0.2),       // 0.2 PCLAW per 1K tokens
-            image_per_image: to_micro(3.0),        // 3.0 PCLAW per image
-            cpu_per_core_hour: to_micro(2.0),      // 2.0 PCLAW per core-hour
-            gpu_consumer_per_hour: to_micro(15.0), // 15.0 PCLAW per GPU-hour
-            gpu_datacenter_per_hour: to_micro(40.0), // 40.0 PCLAW per GPU-hour
-            storage_read_per_mb: to_micro(0.005),  // 0.005 PCLAW per MB
-            storage_write_per_mb: to_micro(0.01),  // 0.01 PCLAW per MB
-            web_fetch_per_request: to_micro(0.1),  // 0.1 PCLAW per request
-            vector_search_per_query: to_micro(0.05), // 0.05 PCLAW per query
-            wasm_per_invocation: to_micro(0.02),   // 0.02 PCLAW per invocation
+            inference_small_per_1k: to_micro(0.5), // 0.5 BKG per 1K tokens
+            inference_medium_per_1k: to_micro(2.0), // 2.0 BKG per 1K tokens
+            inference_large_per_1k: to_micro(5.0), // 5.0 BKG per 1K tokens
+            embedding_per_1k: to_micro(0.2),       // 0.2 BKG per 1K tokens
+            image_per_image: to_micro(3.0),        // 3.0 BKG per image
+            cpu_per_core_hour: to_micro(2.0),      // 2.0 BKG per core-hour
+            gpu_consumer_per_hour: to_micro(15.0), // 15.0 BKG per GPU-hour
+            gpu_datacenter_per_hour: to_micro(40.0), // 40.0 BKG per GPU-hour
+            storage_read_per_mb: to_micro(0.005),  // 0.005 BKG per MB
+            storage_write_per_mb: to_micro(0.01),  // 0.01 BKG per MB
+            web_fetch_per_request: to_micro(0.1),  // 0.1 BKG per request
+            vector_search_per_query: to_micro(0.05), // 0.05 BKG per query
+            wasm_per_invocation: to_micro(0.02),   // 0.02 BKG per invocation
         }
     }
 }
@@ -261,7 +261,7 @@ mod tests {
             tokens: 1000,
         };
         let price = pricing.calculate(&resource);
-        assert_eq!(price, to_micro(0.5)); // 0.5 PCLAW for 1K tokens
+        assert_eq!(price, to_micro(0.5)); // 0.5 BKG for 1K tokens
     }
 
     #[test]
@@ -273,7 +273,7 @@ mod tests {
             tokens: 2000,
         };
         let price = pricing.calculate(&resource);
-        assert_eq!(price, to_micro(10.0)); // 5.0 * 2 = 10.0 PCLAW
+        assert_eq!(price, to_micro(10.0)); // 5.0 * 2 = 10.0 BKG
     }
 
     #[test]
@@ -285,7 +285,7 @@ mod tests {
             bytes: 10 * 1024 * 1024, // 10 MB
         };
         let price = pricing.calculate(&resource);
-        assert_eq!(price, to_micro(0.1)); // 0.01 * 10 = 0.1 PCLAW
+        assert_eq!(price, to_micro(0.1)); // 0.01 * 10 = 0.1 BKG
     }
 
     #[test]

@@ -389,10 +389,10 @@ pub struct EconomyConfig {
     /// Enable token accounting. When false, jobs execute without payment.
     pub enabled: bool,
 
-    /// Default price per 1K inference tokens (μPCLAW). 500_000 = 0.5 PCLAW.
+    /// Default price per 1K inference tokens (μBKG). 500_000 = 0.5 BKG.
     pub inference_price_per_1k: u64,
 
-    /// Default price per tool invocation (μPCLAW). 20_000 = 0.02 PCLAW.
+    /// Default price per tool invocation (μBKG). 20_000 = 0.02 BKG.
     pub tool_price_per_call: u64,
 }
 
@@ -400,8 +400,8 @@ impl Default for EconomyConfig {
     fn default() -> Self {
         Self {
             enabled: true,
-            inference_price_per_1k: 500_000, // 0.5 PCLAW per 1K tokens
-            tool_price_per_call: 20_000,     // 0.02 PCLAW per tool call
+            inference_price_per_1k: 500_000, // 0.5 BKG per 1K tokens
+            tool_price_per_call: 20_000,     // 0.02 BKG per tool call
         }
     }
 }

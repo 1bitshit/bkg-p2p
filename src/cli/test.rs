@@ -164,7 +164,7 @@ async fn run_inference_test(model: &str, prompt: &str, max_tokens: u32) -> anyho
     println!("  Location: {:?}", result.location);
     println!("  Time: {:?}", elapsed);
     if let Some(cost) = result.cost {
-        println!("  Cost: {:.6} PCLAW", from_micro(cost));
+        println!("  Cost: {:.6} BKG", from_micro(cost));
     }
 
     Ok(())
@@ -232,7 +232,7 @@ async fn show_status() -> anyhow::Result<()> {
 
     println!("Peer ID: {}", stats.peer_id);
     println!("Connected peers: {}", stats.connected_peers);
-    println!("Balance: {:.6} PCLAW", stats.balance);
+    println!("Balance: {:.6} BKG", stats.balance);
     println!("Active jobs: {}", stats.active_jobs);
     println!("Completed jobs: {}", stats.completed_jobs);
     println!();
@@ -304,7 +304,7 @@ async fn run_distributed_test(agent_count: u32, duration_secs: u64) -> anyhow::R
         );
         println!("  Tasks completed: {}", stats.tasks_completed);
         println!("  Tasks received: {}", stats.tasks_received);
-        println!("  Final balance: {:.6} PCLAW", stats.final_balance);
+        println!("  Final balance: {:.6} BKG", stats.final_balance);
     }
 
     let total_tasks: usize = results.iter().map(|(_, s)| s.tasks_completed).sum();

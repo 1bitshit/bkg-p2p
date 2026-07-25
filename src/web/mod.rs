@@ -3706,7 +3706,7 @@ async fn api_create_task(
                             }
                             if !user_stop {
                                 t.logs.push(format!(
-                                    "[{}] Completed: {} iterations, {} tokens, {:.4} PCLAW spent",
+                                    "[{}] Completed: {} iterations, {} tokens, {:.4} BKG spent",
                                     chrono::Utc::now().format("%H:%M:%S"),
                                     result.iterations,
                                     result.total_tokens,
@@ -4568,7 +4568,7 @@ async fn api_wallet_balance(State(state): State<Arc<WebState>>) -> Json<serde_js
             "escrowed": from_micro(snapshot.in_escrow),
             "staked": from_micro(snapshot.staked),
             "total": from_micro(snapshot.total),
-            "currency": "PCLAW"
+            "currency": "BKG"
         }))
     } else {
         let balance_micro = *state.wallet_balance.read().await;
@@ -4581,7 +4581,7 @@ async fn api_wallet_balance(State(state): State<Arc<WebState>>) -> Json<serde_js
             "escrowed": 0.0,
             "staked": 0.0,
             "total": from_micro(balance_micro),
-            "currency": "PCLAW"
+            "currency": "BKG"
         }))
     }
 }

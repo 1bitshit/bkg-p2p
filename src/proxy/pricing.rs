@@ -13,7 +13,7 @@ pub struct EndpointPricing {
     pub pattern: String,
     /// HTTP method (or "*" for any)
     pub method: String,
-    /// Price per request in μPCLAW
+    /// Price per request in μBKG
     pub price: u64,
     /// Description of this endpoint
     pub description: String,
@@ -114,7 +114,7 @@ pub struct ProxyPricing {
 impl Default for ProxyPricing {
     fn default() -> Self {
         Self {
-            default_price: to_micro(0.01), // 0.01 PCLAW default
+            default_price: to_micro(0.01), // 0.01 BKG default
             endpoints: vec![
                 // Chat/inference endpoints (higher cost)
                 EndpointPricing::new(
@@ -244,7 +244,7 @@ mod tests {
     fn test_pricing_lookup() {
         let pricing = ProxyPricing::default();
 
-        // Chat endpoint should be 0.1 PCLAW
+        // Chat endpoint should be 0.1 BKG
         let price = pricing.get_price("/v1/chat/completions", "POST").unwrap();
         assert_eq!(price, to_micro(0.1));
 

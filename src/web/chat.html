@@ -922,7 +922,7 @@
                         <option value="monitor">Monitor</option>
                         <option value="analyze">Analyze</option>
                     </select>
-                    <label>Budget <input type="number" id="agent-budget" value="5" step="0.5" min="0.5" max="500" title="PCLAW"></label>
+                    <label>Budget <input type="number" id="agent-budget" value="5" step="0.5" min="0.5" max="500" title="BKG"></label>
                 </div>
                 <a href="/console" class="composer-console-link">Node console →</a>
             </div>
@@ -1095,7 +1095,7 @@
                 const data = await response.json();
                 if (peerStatus) peerStatus.textContent = `${data.connected_peers} peer${data.connected_peers === 1 ? '' : 's'}`;
                 const bl = document.getElementById('balance-line');
-                if (bl) bl.textContent = `${data.balance.toFixed(2)} PCLAW · inference ready when node has models`;
+                if (bl) bl.textContent = `${data.balance.toFixed(2)} BKG · inference ready when node has models`;
             } catch (e) {
                 if (peerStatus) peerStatus.textContent = 'Offline';
                 const bl = document.getElementById('balance-line');
@@ -1736,7 +1736,7 @@
                         const status = await fetch('/api/status').then(r => r.json());
                         output = `Peer ID: ${status.peer_id.slice(0, 16)}...
 Connected peers: ${status.connected_peers}
-Balance: ${status.balance.toFixed(6)} PCLAW
+Balance: ${status.balance.toFixed(6)} BKG
 CPU: ${(status.cpu_usage * 100).toFixed(1)}%
 RAM: ${status.ram_used_mb}/${status.ram_total_mb} MB
 Active jobs: ${status.active_jobs}`;
@@ -1798,7 +1798,7 @@ Active jobs: ${status.active_jobs}`;
                     case 'bal':
                     case 'wallet':
                         const bal = await fetch('/api/status').then(r => r.json());
-                        output = `Wallet balance: ${bal.balance.toFixed(6)} PCLAW`;
+                        output = `Wallet balance: ${bal.balance.toFixed(6)} BKG`;
                         break;
 
                     case 'jobs':
@@ -1832,7 +1832,7 @@ Active jobs: ${status.active_jobs}`;
   Tokens used: ${sessionStats.tokens}
   Requests: ${sessionStats.requests}
   Session time: ${mins}m ${secs}s
-  Est. cost: ${(sessionStats.tokens / 1000).toFixed(4)} PCLAW`;
+  Est. cost: ${(sessionStats.tokens / 1000).toFixed(4)} BKG`;
                         break;
 
                     case 'doctor':
@@ -1968,7 +1968,7 @@ Parameters: {...}`;
 
             // Wallet check
             checks.push(status.balance > 0
-                ? `✓ Wallet: ${status.balance.toFixed(2)} PCLAW`
+                ? `✓ Wallet: ${status.balance.toFixed(2)} BKG`
                 : '! Wallet: Empty');
 
             return 'Health Check:\n' + checks.join('\n');

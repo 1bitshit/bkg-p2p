@@ -41,13 +41,11 @@ pub mod workspace;
 // Re-export commonly used types
 pub use channels::{Channel, ChannelManager, IncomingMessage, OutgoingResponse};
 pub use config::Config;
-pub use documentation::{DocumentationAgent, DocumentationConfig};
 pub use executor::{ExecutorConfig, ResourceMonitor, TaskExecutor};
 pub use identity::NodeIdentity;
 pub use inference::{InferenceConfig, InferenceEngine};
 pub use mcp::{McpClient, McpConfig, McpManager};
 pub use node::Node;
-pub use observability::{BkgTracer, Metrics, Telemetry};
 pub use reputation::{PeerReputation, ReputationConfig, ReputationStore, TrustLevel};
 pub use routines::{Heartbeat, Routine, RoutineConfig, RoutineEngine};
 pub use runtime::Runtime;

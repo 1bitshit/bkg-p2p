@@ -63,7 +63,7 @@ pub struct ServeArgs {
     #[arg(long)]
     pub provider: bool,
 
-    /// Base price per token in μPCLAW (default: 100)
+    /// Base price per token in μBKG (default: 100)
     #[arg(long, default_value = "100")]
     pub price_per_token: u64,
 
@@ -181,7 +181,7 @@ pub async fn run(args: ServeArgs) -> anyhow::Result<()> {
         pricing.base_rates.inference_small_per_1k = args.price_per_token;
         runtime.set_pricing(pricing).await;
         tracing::info!(
-            "Acting as job provider (price: {} μPCLAW/1k tokens)",
+            "Acting as job provider (price: {} μBKG/1k tokens)",
             args.price_per_token
         );
     }
@@ -434,7 +434,7 @@ pub async fn run(args: ServeArgs) -> anyhow::Result<()> {
 
     let stats = runtime.stats().await;
     tracing::info!(
-        "Balance: {:.6} PCLAW | Connected peers: {}",
+        "Balance: {:.6} BKG | Connected peers: {}",
         stats.balance,
         stats.connected_peers
     );
@@ -711,7 +711,7 @@ pub async fn run(args: ServeArgs) -> anyhow::Result<()> {
                             "locked": crate::wallet::from_micro(bal.in_escrow),
                             "staked": crate::wallet::from_micro(bal.staked),
                             "total": crate::wallet::from_micro(bal.total),
-                            "unit": "PCLAW",
+                            "unit": "BKG",
                         },
                     });
                     if include_history {
@@ -1150,7 +1150,7 @@ pub async fn run(args: ServeArgs) -> anyhow::Result<()> {
 
     let final_stats = runtime.stats().await;
     tracing::info!(
-        "Final stats - Balance: {:.6} PCLAW | Active jobs: {} | Completed jobs: {}",
+        "Final stats - Balance: {:.6} BKG | Active jobs: {} | Completed jobs: {}",
         final_stats.balance,
         final_stats.active_jobs,
         final_stats.completed_jobs

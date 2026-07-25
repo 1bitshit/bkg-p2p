@@ -152,7 +152,7 @@ pub async fn run_interactive() -> anyhow::Result<()> {
     );
     println!("  \x1b[36mWeb UI:\x1b[0m     http://127.0.0.1:{}", web_port);
     println!(
-        "  \x1b[36mBalance:\x1b[0m    {:.2} PCLAW",
+        "  \x1b[36mBalance:\x1b[0m    {:.2} BKG",
         crate::wallet::from_micro(runtime.balance().await)
     );
     let peer_count: usize = runtime.connected_peers_count().await;
@@ -274,7 +274,7 @@ async fn show_status(runtime: &Runtime) {
         stats.connected_peers
     );
     println!(
-        "  Balance:         \x1b[33m{:.6} PCLAW\x1b[0m",
+        "  Balance:         \x1b[33m{:.6} BKG\x1b[0m",
         stats.balance
     );
     println!("  Active Jobs:     {}", stats.active_jobs);

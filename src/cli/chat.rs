@@ -685,7 +685,7 @@ pub async fn run(args: ChatArgs) -> anyhow::Result<()> {
                             println!("\n\x1b[1m=== Status ===\x1b[0m");
                             println!("Peer ID: \x1b[36m{}\x1b[0m", stats.peer_id);
                             println!("Connected peers: \x1b[32m{}\x1b[0m", stats.connected_peers);
-                            println!("Balance: \x1b[33m{:.6} PCLAW\x1b[0m", stats.balance);
+                            println!("Balance: \x1b[33m{:.6} BKG\x1b[0m", stats.balance);
                             println!("CPU usage: {:.1}%", stats.resource_state.cpu_usage * 100.0);
                             println!(
                                 "RAM: {}/{} MB",
@@ -793,10 +793,10 @@ pub async fn run(args: ChatArgs) -> anyhow::Result<()> {
                         let secs = elapsed % 60;
                         println!("  Session time:   {}m {}s", mins, secs);
                     }
-                    // Estimate cost in PCLAW (rough: 1 PCLAW per 1000 tokens)
+                    // Estimate cost in BKG (rough: 1 BKG per 1000 tokens)
                     let estimated_cost = session_stats.total_tokens as f64 / 1000.0;
                     println!(
-                        "  Est. cost:      \x1b[33m{:.4} PCLAW\x1b[0m",
+                        "  Est. cost:      \x1b[33m{:.4} BKG\x1b[0m",
                         estimated_cost
                     );
                     println!();
@@ -806,7 +806,7 @@ pub async fn run(args: ChatArgs) -> anyhow::Result<()> {
                     match &mode {
                         ChatMode::Local { runtime: rt } => {
                             let balance = crate::wallet::from_micro(rt.balance().await);
-                            println!("\n  Wallet balance: \x1b[33m{:.6} PCLAW\x1b[0m\n", balance);
+                            println!("\n  Wallet balance: \x1b[33m{:.6} BKG\x1b[0m\n", balance);
                         }
                         ChatMode::Api { base_url } => {
                             if let Ok(status) = fetch_api_status(base_url).await {
@@ -965,7 +965,7 @@ pub async fn run(args: ChatArgs) -> anyhow::Result<()> {
 
                             let balance = crate::wallet::from_micro(rt.balance().await);
                             if balance > 0.0 {
-                                println!("  \x1b[32m✓\x1b[0m Wallet: {:.2} PCLAW", balance);
+                                println!("  \x1b[32m✓\x1b[0m Wallet: {:.2} BKG", balance);
                             } else {
                                 println!("  \x1b[33m!\x1b[0m Wallet: Empty");
                             }
@@ -1454,7 +1454,7 @@ async fn fetch_api_status(base_url: &str) -> anyhow::Result<String> {
     let resp: serde_json::Value = client.get(&url).send().await?.json().await?;
 
     Ok(format!(
-        "Peer ID: {}\nConnected peers: {}\nBalance: {} PCLAW\nActive jobs: {}",
+        "Peer ID: {}\nConnected peers: {}\nBalance: {} BKG\nActive jobs: {}",
         resp.get("peer_id")
             .and_then(|v| v.as_str())
             .unwrap_or("unknown"),

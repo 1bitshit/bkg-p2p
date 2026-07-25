@@ -89,7 +89,7 @@ pub async fn run(cmd: ToolCommand) -> anyhow::Result<()> {
                         if verbose {
                             println!("  {} - {}", tool.name, tool.description);
                             println!(
-                                "    Domain: {:?}, Price: {} micro-PCLAW",
+                                "    Domain: {:?}, Price: {} micro-BKG",
                                 tool.domain, tool.price
                             );
                         } else {
@@ -105,7 +105,7 @@ pub async fn run(cmd: ToolCommand) -> anyhow::Result<()> {
                         if verbose {
                             println!("  {} - {}", tool.name, tool.description);
                             println!(
-                                "    Peer: {}, Price: {} micro-PCLAW",
+                                "    Peer: {}, Price: {} micro-BKG",
                                 tool.peer_id
                                     .as_ref()
                                     .map(|s| &s[..12.min(s.len())])
@@ -114,7 +114,7 @@ pub async fn run(cmd: ToolCommand) -> anyhow::Result<()> {
                             );
                         } else {
                             println!(
-                                "  {:20} {} ({} μPCLAW)",
+                                "  {:20} {} ({} μBKG)",
                                 tool.name,
                                 truncate(&tool.description, 25),
                                 tool.price

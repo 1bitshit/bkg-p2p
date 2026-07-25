@@ -42,7 +42,7 @@ impl Tool for JobSubmitTool {
     }
 
     fn description(&self) -> &str {
-        "Submit a **P2P marketplace** job (costs PCLAW). Same JSON object must include `type` **and** the field that type needs: \
+        "Submit a **P2P marketplace** job (costs BKG). Same JSON object must include `type` **and** the field that type needs: \
          inference → `prompt` or `payload`; web_fetch → `url` or `payload`; wasm → `tool_name` or `payload`; compute/storage → `payload`. \
          Do not use this for ordinary local research — use `web_fetch` (tool) with a `url` instead."
     }
@@ -74,7 +74,7 @@ impl Tool for JobSubmitTool {
                 },
                 "max_budget": {
                     "type": "number",
-                    "description": "Maximum budget in PCLAW tokens"
+                    "description": "Maximum budget in BKG tokens"
                 }
             },
             "required": ["type"]
@@ -314,7 +314,7 @@ impl Tool for PeerDiscoveryTool {
                 },
                 "max_price": {
                     "type": "number",
-                    "description": "Maximum price per unit in PCLAW"
+                    "description": "Maximum price per unit in BKG"
                 },
                 "min_reliability": {
                     "type": "number",
@@ -387,7 +387,7 @@ impl Tool for PeerDiscoveryTool {
     }
 }
 
-/// Wallet balance tool - check PCLAW token balance.
+/// Wallet balance tool - check BKG token balance.
 pub struct WalletBalanceTool {
     // In production: reference to Wallet
 }
@@ -411,7 +411,7 @@ impl Tool for WalletBalanceTool {
     }
 
     fn description(&self) -> &str {
-        "Check your PCLAW token wallet balance. Shows available balance, \
+        "Check your BKG token wallet balance. Shows available balance, \
          locked (in escrow), and total. Also shows recent transactions."
     }
 
@@ -461,7 +461,7 @@ impl Tool for WalletBalanceTool {
                 "available": 0.0,
                 "locked": 0.0,
                 "total": 0.0,
-                "unit": "PCLAW",
+                "unit": "BKG",
             },
             "note": "No running node; wallet data unavailable. Start `bkg-peer serve` for live balances.",
         });

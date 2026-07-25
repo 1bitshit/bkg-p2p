@@ -10,7 +10,7 @@ pub enum PaymentMethod {
     Direct {
         /// Transaction or proof ID
         proof_id: String,
-        /// Amount paid in μPCLAW
+        /// Amount paid in μBKG
         amount: u64,
         /// Signature from payer
         signature: String,
@@ -206,10 +206,10 @@ impl PaymentProof {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(dead_code)]
 pub struct PaymentInfo {
-    /// Required amount in μPCLAW
+    /// Required amount in μBKG
     pub required_amount: u64,
-    /// Required amount in PCLAW (for display)
-    pub required_amount_pclaw: f64,
+    /// Required amount in BKG (for display)
+    pub required_amount_bkg: f64,
     /// Wallet address to send payment
     pub payment_address: String,
     /// Supported payment methods
@@ -224,7 +224,7 @@ impl PaymentInfo {
     pub fn new(required_amount: u64, payment_address: String) -> Self {
         Self {
             required_amount,
-            required_amount_pclaw: crate::wallet::from_micro(required_amount),
+            required_amount_bkg: crate::wallet::from_micro(required_amount),
             payment_address,
             supported_methods: vec![
                 "direct".to_string(),

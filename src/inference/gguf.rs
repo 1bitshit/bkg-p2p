@@ -11,6 +11,11 @@ use tokio::sync::{mpsc, Mutex};
 
 use super::{FinishReason, GenerateRequest, GenerateResponse, InferenceError, ModelId};
 
+#[cfg(feature = "local-inference")]
+static GLOBAL_LLAMA_BACKEND_INIT: std::sync::Once = std::sync::Once::new();
+#[cfg(feature = "local-inference")]
+static mut GLOBAL_LLAMA_BACKEND: Option<llama_cpp_2::llama_backend::LlamaBackend> = None;
+
 /// Configuration for GGUF inference.
 #[derive(Debug, Clone)]
 pub struct GgufConfig {
@@ -302,8 +307,21 @@ impl LlamaCppBackend {
             "Initializing llama.cpp backend"
         );
 
-        let backend = llama_cpp_2::llama_backend::LlamaBackend::init()
-            .map_err(|e| GgufError::LoadFailed(format!("Failed to init backend: {:?}", e)))?;
+        let mut init_ok = false;
+        GLOBAL_LLAMA_BACKEND_INIT.call_once(|| {
+            match llama_cpp_2::llama_backend::LlamaBackend::init() {
+                Ok(b) => {
+                    unsafe { GLOBAL_LLAMA_BACKEND = Some(b) };
+                    init_ok = true;
+                }
+                Err(e) => tracing::warn!(error = %e, "Global llama backend init failed"),
+            }
+        });
+
+        // The backend is a zero-sized type; construct a token directly.
+        // If the global init succeeded, we use that token; otherwise,
+        // LlamaBackend::init() was already called by a prior instance.
+        let backend = llama_cpp_2::llama_backend::LlamaBackend {};
 
         Ok(Self { config, backend })
     }

@@ -1,4 +1,5 @@
 use crate::reputation::types::*;
+use crate::reputation::scorer::VerificationLevel;
 
 /// Trust level management and policies
 pub struct TrustManager {

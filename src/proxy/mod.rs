@@ -1,6 +1,6 @@
 //! HTTP 402 Payment Required proxy.
 //!
-//! Implements a pay-per-request proxy that requires PCLAW token
+//! Implements a pay-per-request proxy that requires BKG token
 //! payment for API access. Supports both per-request payment
 //! and payment channel-based streaming access.
 //!
@@ -64,7 +64,7 @@ impl IntoResponse for ProxyError {
             ProxyError::InsufficientPayment { required, provided } => (
                 StatusCode::PAYMENT_REQUIRED,
                 format!(
-                    "Insufficient payment: need {:.6} PCLAW, got {:.6} PCLAW",
+                    "Insufficient payment: need {:.6} BKG, got {:.6} BKG",
                     from_micro(*required),
                     from_micro(*provided)
                 ),
@@ -89,7 +89,7 @@ impl IntoResponse for ProxyError {
 pub struct ProxyConfig {
     /// Listen address for the proxy server
     pub listen_addr: SocketAddr,
-    /// Base price per request in μPCLAW (default pricing)
+    /// Base price per request in μBKG (default pricing)
     pub base_price_per_request: u64,
     /// Enable payment channels for streaming access
     pub enable_channels: bool,
@@ -107,9 +107,9 @@ impl Default for ProxyConfig {
     fn default() -> Self {
         Self {
             listen_addr: "127.0.0.1:8402".parse().unwrap(),
-            base_price_per_request: to_micro(0.01), // 0.01 PCLAW per request
+            base_price_per_request: to_micro(0.01), // 0.01 BKG per request
             enable_channels: true,
-            min_channel_capacity: to_micro(10.0), // 10 PCLAW minimum channel
+            min_channel_capacity: to_micro(10.0), // 10 BKG minimum channel
             rate_limit_per_minute: 100,
             free_tier_enabled: true,
             free_tier_requests_per_hour: 10,
@@ -256,7 +256,7 @@ impl Proxy {
         let info = serde_json::json!({
             "service": "bkg-peer HTTP 402 Proxy",
             "version": env!("CARGO_PKG_VERSION"),
-            "base_price": format!("{:.6} PCLAW", from_micro(state.config.base_price_per_request)),
+            "base_price": format!("{:.6} BKG", from_micro(state.config.base_price_per_request)),
             "payment_channels": state.config.enable_channels,
             "free_tier": state.config.free_tier_enabled,
             "free_requests_per_hour": state.config.free_tier_requests_per_hour,
@@ -315,7 +315,7 @@ impl Proxy {
                 } else {
                     // Return 402 with payment instructions
                     return Err(ProxyError::PaymentRequired(format!(
-                        "Payment required: {:.6} PCLAW. Include X-Payment-Proof header.",
+                        "Payment required: {:.6} BKG. Include X-Payment-Proof header.",
                         from_micro(price)
                     )));
                 }
@@ -337,7 +337,7 @@ impl Proxy {
             StatusCode::OK,
             [(
                 "X-Payment-Received",
-                format!("{:.6} PCLAW", from_micro(price)),
+                format!("{:.6} BKG", from_micro(price)),
             )],
             "Request processed (upstream forwarding not yet implemented)",
         ))

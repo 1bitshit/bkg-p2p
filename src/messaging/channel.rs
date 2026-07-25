@@ -320,7 +320,7 @@ pub struct P2pChannelConfig {
     pub broadcast_messages: bool,
     /// Required reputation score for network messages.
     pub min_reputation: i32,
-    /// Price per message (in micro-PCLAW).
+    /// Price per message (in micro-BKG).
     pub price_per_message: u64,
 }
 

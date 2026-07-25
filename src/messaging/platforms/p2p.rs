@@ -21,7 +21,7 @@ pub struct P2pConfig {
     pub accept_unknown_peers: bool,
     /// Minimum reputation score to accept messages.
     pub min_reputation: i32,
-    /// Price per incoming message (micro-PCLAW).
+    /// Price per incoming message (micro-BKG).
     pub price_per_message: u64,
     /// Maximum pending messages.
     pub max_pending: usize,
@@ -356,7 +356,7 @@ pub struct P2pMessageEnvelope {
 pub struct P2pPaymentInfo {
     /// Payment channel ID.
     pub channel_id: String,
-    /// Amount in micro-PCLAW.
+    /// Amount in micro-BKG.
     pub amount: u64,
     /// Payment nonce.
     pub nonce: u64,

@@ -76,7 +76,7 @@ impl fmt::Display for EscrowStatus {
 pub struct Escrow {
     /// Unique identifier.
     pub id: EscrowId,
-    /// Amount held in escrow (in μPCLAW).
+    /// Amount held in escrow (in μBKG).
     pub amount: u64,
     /// Recipient's address (peer ID) who will receive on success.
     pub recipient: String,
@@ -128,8 +128,8 @@ impl Escrow {
         self.expires_at - Utc::now()
     }
 
-    /// Get amount in PCLAW (float).
-    pub fn amount_pclaw(&self) -> f64 {
+    /// Get amount in BKG (float).
+    pub fn amount_bkg(&self) -> f64 {
         super::from_micro(self.amount)
     }
 }

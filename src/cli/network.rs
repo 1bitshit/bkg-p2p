@@ -102,7 +102,7 @@ async fn show_status() -> anyhow::Result<()> {
                     println!("  CPU Usage:     {:.1}%", cpu * 100.0);
                 }
                 if let Some(balance) = status.get("balance").and_then(|v| v.as_f64()) {
-                    println!("  Balance:       {:.6} PCLAW", balance);
+                    println!("  Balance:       {:.6} BKG", balance);
                 }
             }
         }

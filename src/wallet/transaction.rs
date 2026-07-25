@@ -94,7 +94,7 @@ pub struct Transaction {
     pub id: TransactionId,
     /// Type of transaction.
     pub tx_type: TransactionType,
-    /// Amount in μPCLAW.
+    /// Amount in μBKG.
     pub amount: u64,
     /// When the transaction occurred.
     pub timestamp: DateTime<Utc>,
@@ -234,8 +234,8 @@ impl Transaction {
         }
     }
 
-    /// Get amount in PCLAW (float).
-    pub fn amount_pclaw(&self) -> f64 {
+    /// Get amount in BKG (float).
+    pub fn amount_bkg(&self) -> f64 {
         super::from_micro(self.amount)
     }
 
@@ -248,10 +248,10 @@ impl Transaction {
         };
 
         format!(
-            "{} {} {:.6} PCLAW  {}  {}",
+            "{} {} {:.6} BKG  {}  {}",
             self.timestamp.format("%Y-%m-%d %H:%M"),
             direction_char,
-            self.amount_pclaw(),
+            self.amount_bkg(),
             self.tx_type,
             self.id
         )
@@ -289,7 +289,7 @@ mod tests {
         let tx = Transaction::new_credit(1_000_000, "test".to_string());
         let display = tx.display_line();
         assert!(display.contains("+"));
-        assert!(display.contains("PCLAW"));
+        assert!(display.contains("BKG"));
         assert!(display.contains("Credit"));
     }
 

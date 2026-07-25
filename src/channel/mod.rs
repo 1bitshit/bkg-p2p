@@ -118,7 +118,7 @@ pub struct PaymentChannel {
     pub local_peer: String,
     /// Remote peer ID
     pub remote_peer: String,
-    /// Total capacity locked in channel (in μPCLAW)
+    /// Total capacity locked in channel (in μBKG)
     pub capacity: u64,
     /// Local balance (our side of the channel)
     pub local_balance: u64,
@@ -248,18 +248,18 @@ impl PaymentChannel {
         Ok(())
     }
 
-    /// Get capacity in PCLAW.
-    pub fn capacity_pclaw(&self) -> f64 {
+    /// Get capacity in BKG.
+    pub fn capacity_bkg(&self) -> f64 {
         from_micro(self.capacity)
     }
 
-    /// Get local balance in PCLAW.
-    pub fn local_balance_pclaw(&self) -> f64 {
+    /// Get local balance in BKG.
+    pub fn local_balance_bkg(&self) -> f64 {
         from_micro(self.local_balance)
     }
 
-    /// Get remote balance in PCLAW.
-    pub fn remote_balance_pclaw(&self) -> f64 {
+    /// Get remote balance in BKG.
+    pub fn remote_balance_bkg(&self) -> f64 {
         from_micro(self.remote_balance)
     }
 }
@@ -268,12 +268,12 @@ impl std::fmt::Display for PaymentChannel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Channel[{}]: {} <-> {} ({:.6}/{:.6} PCLAW) [{}]",
+            "Channel[{}]: {} <-> {} ({:.6}/{:.6} BKG) [{}]",
             self.id,
             &self.local_peer[..8.min(self.local_peer.len())],
             &self.remote_peer[..8.min(self.remote_peer.len())],
-            self.local_balance_pclaw(),
-            self.capacity_pclaw(),
+            self.local_balance_bkg(),
+            self.capacity_bkg(),
             self.status
         )
     }
@@ -657,7 +657,7 @@ pub struct ChannelStats {
     pub total_channels: usize,
     /// Number of active channels
     pub active_channels: usize,
-    /// Total capacity across active channels (in μPCLAW)
+    /// Total capacity across active channels (in μBKG)
     pub total_capacity: u64,
     /// Total local balance across active channels
     pub total_local_balance: u64,
@@ -676,22 +676,22 @@ impl std::fmt::Display for ChannelStats {
         writeln!(f, "Active channels: {}", self.active_channels)?;
         writeln!(
             f,
-            "Total capacity:  {:.6} PCLAW",
+            "Total capacity:  {:.6} BKG",
             from_micro(self.total_capacity)
         )?;
         writeln!(
             f,
-            "Local balance:   {:.6} PCLAW",
+            "Local balance:   {:.6} BKG",
             from_micro(self.total_local_balance)
         )?;
         writeln!(
             f,
-            "Total sent:      {:.6} PCLAW",
+            "Total sent:      {:.6} BKG",
             from_micro(self.total_sent)
         )?;
         writeln!(
             f,
-            "Total received:  {:.6} PCLAW",
+            "Total received:  {:.6} BKG",
             from_micro(self.total_received)
         )?;
         writeln!(f, "Total updates:   {}", self.total_updates)

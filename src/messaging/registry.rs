@@ -95,7 +95,7 @@ pub struct NetworkChannelInfo {
     pub platform: Platform,
     /// Whether the channel accepts network messages.
     pub accepts_messages: bool,
-    /// Price per message (micro-PCLAW).
+    /// Price per message (micro-BKG).
     pub price: u64,
     /// Last seen timestamp.
     pub last_seen: chrono::DateTime<chrono::Utc>,

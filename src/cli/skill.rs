@@ -100,7 +100,7 @@ pub async fn run(cmd: SkillCommand) -> anyhow::Result<()> {
                             skill.trust, skill.available
                         );
                         if skill.price > 0 {
-                            println!("    Price: {} micro-PCLAW", skill.price);
+                            println!("    Price: {} micro-BKG", skill.price);
                         }
                         println!();
                     } else {
@@ -164,7 +164,7 @@ pub async fn run(cmd: SkillCommand) -> anyhow::Result<()> {
                 if skill.manifest.sharing.enabled {
                     println!("\n  Sharing: Enabled");
                     println!(
-                        "    Price: {} micro-PCLAW per use",
+                        "    Price: {} micro-BKG per use",
                         skill.manifest.sharing.price
                     );
                     if let Some(limit) = skill.manifest.sharing.rate_limit {

@@ -430,7 +430,7 @@ impl Runtime {
         self.executor.resource_state().await
     }
 
-    /// Get wallet balance (available μPCLAW).
+    /// Get wallet balance (available μBKG).
     pub async fn balance(&self) -> u64 {
         self.wallet.balance().await.available
     }

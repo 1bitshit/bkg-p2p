@@ -173,8 +173,8 @@ impl Job {
         )
     }
 
-    /// Get price in PCLAW.
-    pub fn price_pclaw(&self) -> f64 {
+    /// Get price in BKG.
+    pub fn price_bkg(&self) -> f64 {
         crate::wallet::from_micro(self.bid.price)
     }
 }
@@ -183,11 +183,11 @@ impl fmt::Display for Job {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Job[{}]: {} → {} ({:.6} PCLAW) [{}]",
+            "Job[{}]: {} → {} ({:.6} BKG) [{}]",
             self.id,
             self.request.resource_type,
             self.bid.bidder_id,
-            self.price_pclaw(),
+            self.price_bkg(),
             self.status
         )
     }
