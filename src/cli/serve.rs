@@ -13,6 +13,7 @@ use crate::executor::task::{ExecutionLocation, ExecutionTask, InferenceTask, Tas
 use crate::identity::NodeIdentity;
 use crate::job::PricingStrategy;
 use crate::p2p::NetworkEvent;
+use crate::run::{RunEvent, RunEventKind, RunKind, RunRecord};
 use crate::runtime::Runtime;
 use crate::web::{
     InferenceRequest, InferenceResponse, JobSubmitRequest, JobSubmitResponse, WebJobInfo,
@@ -899,15 +900,38 @@ pub async fn run(args: ServeArgs) -> anyhow::Result<()> {
             }
         }
 
-        // Crew runs (inline — `TaskExecutor` is not `Send`, same as agent tasks).
-        if let Some(ref mut ckrx) = crew_kickoff_rx {
-            while let Ok(job) = ckrx.try_recv() {
-                if let Some(st) = web_state.as_ref() {
-                    let store = st.crew_store.clone();
-                    let ws = st.ws_control_tx.clone();
-                    store.update_status(&job.run_id, "running");
-                    store.push_log(&job.run_id, "[crew] started".to_string());
-                    crate::web::broadcast_crews_changed(&ws);
+fn persist_run_record(runtime: &Runtime, rec: RunRecord) {
+    let _ = runtime.database.store_run(&rec.run_id, &rec);
+}
+
+fn emit_run_event(runtime: &Runtime, run_id: &str, event: RunEvent) {
+    let _ = runtime.database.append_run_event(run_id, &event);
+}
+
+// Crew runs (inline — `TaskExecutor` is not `Send`, same as agent tasks).
+if let Some(ref mut ckrx) = crew_kickoff_rx {
+    while let Ok(job) = ckrx.try_recv() {
+        if let Some(st) = web_state.as_ref() {
+            let store = st.crew_store.clone();
+            let ws = st.ws_control_tx.clone();
+
+            let run_record = RunRecord::new(&job.run_id, RunKind::Crew, &job.spec.name);
+            persist_run_record(&runtime, run_record);
+            emit_run_event(
+                &runtime,
+                &job.run_id,
+                RunEvent {
+                    seq: 0,
+                    ts: chrono::Utc::now(),
+                    kind: RunEventKind::Queued,
+                    message: "[crew] queued".to_string(),
+                    payload: None,
+                },
+            );
+
+            store.update_status(&job.run_id, "running");
+            store.push_log(&job.run_id, "[crew] started".to_string());
+            crate::web::broadcast_crews_changed(&ws);
                     let extras = crate::agent::AgentTaskExtras::default();
                     let orch = runtime.local_peer_id;
                     let res = crate::crew::run_crew(
