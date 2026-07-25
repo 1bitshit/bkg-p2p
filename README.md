@@ -654,16 +654,17 @@ bkg-peer test cluster --nodes 3           # Spawn test cluster
 - [x] **Multi-agent orchestration** — crews, flows, P2P crew market, visual workflow builder, 4 multi-step templates, real-time streaming
 - [x] **LLM provider sharing** — remote inference with BKG escrow billing, provider discovery
 - [x] **Agent runtime** — ReAct loop, budget enforcement, TOML specs, 20+ builtin tools, WASM sandbox, MCP
-- [x] **Safety layer** — leak detection, prompt injection defense, SSRF guard, egress filtering
+- [x] **Safety layer** — leak detection, prompt injection defense, SSRF guard, egress filtering, HITL approval gate
 - [x] **Swarm visualization** — D3.js topology, agent cards, event timeline
 - [x] **Python SDK** — validate + kickoff + poll
 - [x] **A2A integration** — agent cards, JSON-RPC, GossipSub peer discovery
-- [ ] **Durable agent runs** — redb schema for `runs` + `run_events`, checkpoint/resume, audit export
-- [ ] **Observability maturity** — tracing spans with `run_id`, metrics endpoint, OTLP export
-- [ ] **Distributed inference (2-peer pipeline)** — feature-flagged, behind `config.inference.distributed_pipeline`
-- [ ] **Cross-peer tool execution** — tool manifest GossipSub advertising, escrow execution, signed receipts
-- [ ] **HITL (Human-in-the-loop)** — approval state machine, API + web UI queue, timeout policy
-- [ ] **Context compaction** — configurable policy (truncate/summarize/hybrid), per-surface, web visibility
+- [x] **Durable agent runs** — redb schema for `runs` + `run_events`, `GET /api/runs`, `GET /api/runs/:id`, `GET /api/runs/:id/events`
+- [x] **Observability maturity** — tracing spans (`react_pass`, `tool_execute`, `crew_task`, `job_phase`) with `run_id`, `GET /api/metrics` Prometheus endpoint
+- [x] **Distributed inference (2-peer pipeline)** — `DistributedInferenceEngine`, `DistributedInferenceConfig`, peer routing behind `enable_p2p_routing`; local fallback
+- [x] **Cross-peer tool execution** — `TOOL_MANIFEST_TOPIC`, `ToolManifest`/`ToolManifestAdvert`, `advertise_tools` via GossipSub, manifests routed in Runtime
+- [x] **HITL (Human-in-the-loop)** — `HitlStore` state machine (Pending/Approved/Rejected/Escalated), `GET /api/approvals`, `POST /api/approvals/:id/approve`, `…/reject`; unified loop gate blocks `ApprovalRequirement::Always` tools
+- [x] **Context compaction** — `[agent.compaction]` config (`max_context_chars`, `prune_threshold`, `aggressive`); wired into `Config::CompactionConfig`
+- [x] **CI** — `.github/workflows/ci.yml`: `cargo test`, `cargo clippy -- -D warnings`, `cargo fmt --check`
 
 ### Future (v1.0)
 
