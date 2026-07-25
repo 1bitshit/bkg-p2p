@@ -64,6 +64,10 @@ pub struct Config {
     /// Editable LLM prompt fragments (`prompts/*.txt` overlays).
     #[serde(default)]
     pub prompts: PromptsConfig,
+
+    /// Agent compaction settings for the conversation loop.
+    #[serde(default)]
+    pub compaction: CompactionConfig,
 }
 
 /// Optional directory of `*.txt` files that override built-in prompt fragments at startup.
@@ -71,6 +75,17 @@ pub struct Config {
 pub struct PromptsConfig {
     /// Same-named `.txt` as embedded stems (e.g. `agentic_system_intro.txt`).
     pub directory: Option<PathBuf>,
+}
+
+/// Compaction settings for the agentic conversation loop.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CompactionConfig {
+    /// Maximum context window characters; conversation is pruned when exceeded.
+    pub max_context_chars: usize,
+    /// Ratio (0.0–1.0) of max_context_chars at which pruning triggers.
+    pub prune_threshold: f64,
+    /// When true, aggressive compaction drops tool results first.
+    pub aggressive: bool,
 }
 
 /// Crew task market worker and related flags.
