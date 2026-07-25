@@ -211,10 +211,12 @@ pub struct WebState {
     pub wallet: Option<Arc<crate::wallet::Wallet>>,
     /// Vector store for semantic search / memory.
     pub vector_store: Option<Arc<crate::vector::VectorStore>>,
-    /// When true (`bkg-peer serve -V`), agentic tool calls log args + results to stderr (see unified loop).
-    pub verbose_agentic_io: bool,
-    /// Actual P2P listen multiaddresses (populated from swarm after binding).
-    pub listen_addresses: Arc<tokio::sync::RwLock<Vec<String>>>,
+/// When true (`bkg-peer serve -V`), agentic tool calls log args + results to stderr (see unified loop).
+pub verbose_agentic_io: bool,
+/// Persistent redb database handle; `None` when no data dir is configured.
+pub database: Option<Arc<crate::db::Database>>,
+/// Actual P2P listen multiaddresses (populated from swarm after binding).
+pub listen_addresses: Arc<tokio::sync::RwLock<Vec<String>>>,
     /// A2A task store + discovered peer agent cards (shared with P2P).
     pub a2a: Arc<crate::a2a::A2aState>,
     /// Public base URL for this node's HTTP surface (e.g. `http://127.0.0.1:8080`) for Agent Card.
@@ -432,10 +434,13 @@ fn api_router() -> Router<Arc<WebState>> {
         .route("/providers", get(api_list_providers))
         .route("/providers/config", get(api_get_provider_config))
         .route("/providers/config", post(api_set_provider_config))
-        .route("/nodes/:id", get(api_node_detail))
-        .route("/swarm/agents", get(api_swarm_agents))
-        .route("/swarm/topology", get(api_swarm_topology))
-        .route("/swarm/timeline", get(api_swarm_timeline))
+ .route("/nodes/:id", get(api_node_detail))
+ .route("/runs", get(api_runs_list))
+ .route("/runs/:id", get(api_run_get))
+ .route("/runs/:id/events", get(api_run_events))
+ .route("/swarm/agents", get(api_swarm_agents))
+ .route("/swarm/topology", get(api_swarm_topology))
+ .route("/swarm/timeline", get(api_swarm_timeline))
         .route(
             "/inference/settings",
             get(api_inference_settings_get).put(api_inference_settings_put),
@@ -535,6 +540,7 @@ pub fn create_web_state(
         wallet: None,
         vector_store: Some(crate::vector::get_or_init_vector_store()),
         verbose_agentic_io: false,
+database: None,
         listen_addresses: Arc::new(tokio::sync::RwLock::new(Vec::new())),
         a2a: crate::a2a::A2aState::new(),
         a2a_public_base_url: "http://127.0.0.1:8080".to_string(),
@@ -587,6 +593,7 @@ pub fn create_web_state_with_channels(
         wallet: None,
         vector_store: Some(crate::vector::get_or_init_vector_store()),
         verbose_agentic_io: false,
+database: None,
         listen_addresses: Arc::new(tokio::sync::RwLock::new(Vec::new())),
         a2a: crate::a2a::A2aState::new(),
         a2a_public_base_url: "http://127.0.0.1:8080".to_string(),
@@ -638,6 +645,7 @@ pub fn create_web_state_with_inference(
         wallet: None,
         vector_store: Some(crate::vector::get_or_init_vector_store()),
         verbose_agentic_io: false,
+database: None,
         listen_addresses: Arc::new(tokio::sync::RwLock::new(Vec::new())),
         a2a: crate::a2a::A2aState::new(),
         a2a_public_base_url: "http://127.0.0.1:8080".to_string(),
@@ -689,6 +697,7 @@ pub fn create_web_state_with_swarm(
         wallet: None,
         vector_store: Some(crate::vector::get_or_init_vector_store()),
         verbose_agentic_io: false,
+database: None,
         listen_addresses: Arc::new(tokio::sync::RwLock::new(Vec::new())),
         a2a: crate::a2a::A2aState::new(),
         a2a_public_base_url: "http://127.0.0.1:8080".to_string(),
@@ -1091,6 +1100,62 @@ async fn api_crew_stream(
     let data = serde_json::to_string(&rec).unwrap_or_else(|_| "{}".to_string());
     let s = tokio_stream::iter(vec![Ok(Event::default().data(data))]);
     Sse::new(s).keep_alive(KeepAlive::default())
+}
+
+#[derive(Serialize)]
+struct RunsResponse {
+ pub runs: Vec<crate::run::RunRecord>,
+}
+
+#[derive(Serialize)]
+struct RunEventsResponse {
+ pub run_id: String,
+ pub events: Vec<crate::run::RunEvent>,
+}
+
+async fn api_runs_list(State(state): State<Arc<WebState>>) -> Json<RunsResponse> {
+ let ids = match state.database.as_ref() {
+ Some(db) => db.list_run_ids().unwrap_or_default(),
+ None => Vec::new(),
+ };
+ let mut runs = Vec::new();
+ for id in ids {
+ if let Ok(Some(rec)) = state
+ .database
+ .as_ref()
+ .unwrap()
+ .get_run::<crate::run::RunRecord>(&id)
+ {
+ runs.push(rec);
+ }
+ }
+ Json(RunsResponse { runs })
+}
+
+async fn api_run_get(
+ State(state): State<Arc<WebState>>,
+ Path(run_id): Path<String>,
+) -> Result<Json<crate::run::RunRecord>, StatusCode> {
+ match state.database.as_ref() {
+ Some(db) => match db.get_run::<crate::run::RunRecord>(&run_id) {
+ Ok(Some(rec)) => Ok(Json(rec)),
+ _ => Err(StatusCode::NOT_FOUND),
+ },
+ None => Err(StatusCode::NOT_FOUND),
+ }
+}
+
+async fn api_run_events(
+ State(state): State<Arc<WebState>>,
+ Path(run_id): Path<String>,
+) -> Result<Json<RunEventsResponse>, StatusCode> {
+ match state.database.as_ref() {
+ Some(db) => {
+ let events = db.list_run_events(&run_id).unwrap_or_default();
+ Ok(Json(RunEventsResponse { run_id, events }))
+ }
+ None => Err(StatusCode::NOT_FOUND),
+ }
 }
 
 async fn api_status(State(state): State<Arc<WebState>>) -> Json<StatusResponse> {

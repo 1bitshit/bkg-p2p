@@ -384,8 +384,9 @@ pub async fn run(args: ServeArgs) -> anyhow::Result<()> {
                 channel_registry: None,
                 wallet: None,
                 vector_store: Some(crate::vector::get_or_init_vector_store()),
-                verbose_agentic_io: args.verbose_agentic,
-                listen_addresses: listen_addrs_clone.clone(),
+verbose_agentic_io: args.verbose_agentic,
+database: Some(runtime.database.clone()),
+listen_addresses: listen_addrs_clone.clone(),
                 a2a: runtime.a2a.clone(),
                 a2a_public_base_url: format!("http://{}", config.web.listen_addr),
                 crew_store: crew_store.clone(),
@@ -990,16 +991,31 @@ if let Some(ref mut ckrx) = crew_kickoff_rx {
             }
         }
 
-        // Flow runs (DAG over LLM + optional nested crews).
-        if let Some(ref mut frx) = flow_kickoff_rx {
-            while let Ok(job) = frx.try_recv() {
-                if let Some(st) = web_state.as_ref() {
-                    let fs = st.flow_store.clone();
-                    let ws = st.ws_control_tx.clone();
-                    let mcp = st.mcp_manager.read().await.clone();
-                    fs.update_status(&job.run_id, "running");
-                    fs.push_log(&job.run_id, "[flow] started");
-                    crate::web::broadcast_flow_log(&ws, &job.run_id, "[flow] started", "running");
+// Flow runs (DAG over LLM + optional nested crews).
+if let Some(ref mut frx) = flow_kickoff_rx {
+    while let Ok(job) = frx.try_recv() {
+        if let Some(st) = web_state.as_ref() {
+            let fs = st.flow_store.clone();
+            let ws = st.ws_control_tx.clone();
+            let mcp = st.mcp_manager.read().await.clone();
+
+            let run_record = RunRecord::new(&job.run_id, RunKind::Flow, &job.spec.name);
+            persist_run_record(&runtime, run_record);
+            emit_run_event(
+                &runtime,
+                &job.run_id,
+                RunEvent {
+                    seq: 0,
+                    ts: chrono::Utc::now(),
+                    kind: RunEventKind::Queued,
+                    message: "[flow] queued".to_string(),
+                    payload: None,
+                },
+            );
+
+            fs.update_status(&job.run_id, "running");
+            fs.push_log(&job.run_id, "[flow] started");
+            crate::web::broadcast_flow_log(&ws, &job.run_id, "[flow] started", "running");
                     crate::web::broadcast_flows_changed(&ws);
                     let extras = crate::agent::AgentTaskExtras {
                         use_mcp: mcp.is_some(),
