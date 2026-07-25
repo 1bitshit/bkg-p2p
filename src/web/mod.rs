@@ -43,6 +43,7 @@ use tower_http::normalize_path::NormalizePathLayer;
 use tower_http::services::{ServeDir, ServeFile};
 
 use crate::executor::ResourceMonitor;
+use crate::observability::Metrics;
 use crate::p2p::ProviderTracker;
 use crate::swarm::SwarmManager;
 use crate::wallet::from_micro;
@@ -214,9 +215,11 @@ pub struct WebState {
 /// When true (`bkg-peer serve -V`), agentic tool calls log args + results to stderr (see unified loop).
 pub verbose_agentic_io: bool,
 /// Persistent redb database handle; `None` when no data dir is configured.
-pub database: Option<Arc<crate::db::Database>>,
-/// Actual P2P listen multiaddresses (populated from swarm after binding).
-pub listen_addresses: Arc<tokio::sync::RwLock<Vec<String>>>,
+    pub database: Option<Arc<crate::db::Database>>,
+    /// Actual P2P listen multiaddresses (populated from swarm after binding).
+    pub listen_addresses: Arc<tokio::sync::RwLock<Vec<String>>>,
+    /// Prometheus-style metrics snapshot for `/api/metrics`.
+    pub metrics: Option<Arc<crate::observability::Metrics>>,
     /// A2A task store + discovered peer agent cards (shared with P2P).
     pub a2a: Arc<crate::a2a::A2aState>,
     /// Public base URL for this node's HTTP surface (e.g. `http://127.0.0.1:8080`) for Agent Card.
@@ -469,6 +472,7 @@ fn api_router() -> Router<Arc<WebState>> {
         .route("/tools/execute", post(api_tool_execute))
         .route("/tools/:name", get(api_tool_detail))
         .route("/a2a/peers", get(api_a2a_peers))
+         .route("/metrics", get(api_metrics))
 }
 
 /// Create the web router.
@@ -539,8 +543,9 @@ pub fn create_web_state(
         channel_registry: None,
         wallet: None,
         vector_store: Some(crate::vector::get_or_init_vector_store()),
-        verbose_agentic_io: false,
-database: None,
+verbose_agentic_io: false,
+        database: None,
+        metrics: None,
         listen_addresses: Arc::new(tokio::sync::RwLock::new(Vec::new())),
         a2a: crate::a2a::A2aState::new(),
         a2a_public_base_url: "http://127.0.0.1:8080".to_string(),
@@ -592,8 +597,9 @@ pub fn create_web_state_with_channels(
         channel_registry: None,
         wallet: None,
         vector_store: Some(crate::vector::get_or_init_vector_store()),
-        verbose_agentic_io: false,
-database: None,
+verbose_agentic_io: false,
+        database: None,
+        metrics: None,
         listen_addresses: Arc::new(tokio::sync::RwLock::new(Vec::new())),
         a2a: crate::a2a::A2aState::new(),
         a2a_public_base_url: "http://127.0.0.1:8080".to_string(),
@@ -644,8 +650,9 @@ pub fn create_web_state_with_inference(
         channel_registry: None,
         wallet: None,
         vector_store: Some(crate::vector::get_or_init_vector_store()),
-        verbose_agentic_io: false,
-database: None,
+verbose_agentic_io: false,
+        database: None,
+        metrics: None,
         listen_addresses: Arc::new(tokio::sync::RwLock::new(Vec::new())),
         a2a: crate::a2a::A2aState::new(),
         a2a_public_base_url: "http://127.0.0.1:8080".to_string(),
@@ -696,8 +703,9 @@ pub fn create_web_state_with_swarm(
         channel_registry: None,
         wallet: None,
         vector_store: Some(crate::vector::get_or_init_vector_store()),
-        verbose_agentic_io: false,
-database: None,
+verbose_agentic_io: false,
+        database: None,
+        metrics: None,
         listen_addresses: Arc::new(tokio::sync::RwLock::new(Vec::new())),
         a2a: crate::a2a::A2aState::new(),
         a2a_public_base_url: "http://127.0.0.1:8080".to_string(),
@@ -1154,11 +1162,36 @@ async fn api_run_events(
  let events = db.list_run_events(&run_id).unwrap_or_default();
  Ok(Json(RunEventsResponse { run_id, events }))
  }
- None => Err(StatusCode::NOT_FOUND),
+None => Err(StatusCode::NOT_FOUND),
+  }
  }
-}
 
-async fn api_status(State(state): State<Arc<WebState>>) -> Json<StatusResponse> {
+ #[derive(Serialize)]
+ struct MetricsResponse {
+  counters: std::collections::HashMap<String, u64>,
+  gauges: std::collections::HashMap<String, f64>,
+  histograms: std::collections::HashMap<String, Vec<f64>>,
+ }
+
+ async fn api_metrics(State(state): State<Arc<WebState>>) -> Json<MetricsResponse> {
+  match state.metrics.as_ref() {
+   Some(m) => {
+    let snap = m.snapshot().await;
+    Json(MetricsResponse {
+     counters: snap.counters,
+     gauges: snap.gauges,
+     histograms: snap.histograms,
+    })
+   }
+   None => Json(MetricsResponse {
+    counters: std::collections::HashMap::new(),
+    gauges: std::collections::HashMap::new(),
+    histograms: std::collections::HashMap::new(),
+   }),
+  }
+ }
+
+ async fn api_status(State(state): State<Arc<WebState>>) -> Json<StatusResponse> {
     let resource_state = state.resource_monitor.current_state().await;
     let balance = from_micro(*state.wallet_balance.read().await);
     let connected_peers = state.connected_peers.read().await.len();

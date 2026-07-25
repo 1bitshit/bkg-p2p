@@ -24,6 +24,7 @@ use crate::inference::{
     InferenceEngine, InferenceLiveSettings, ModelDistributor,
 };
 use crate::job::{network as job_network, JobManager, PricingStrategy};
+use crate::observability::Metrics;
 use crate::p2p::{Network, ProviderTracker};
 use crate::skills::SkillRegistry;
 use crate::tools::ToolRegistry;
@@ -67,6 +68,8 @@ pub struct Runtime {
     pub prompts: Arc<crate::prompts::PromptBundle>,
     /// A2A task state and discovered agent cards (shared with P2P + HTTP).
     pub a2a: Arc<A2aState>,
+    /// Prometheus-style metrics collector.
+    pub metrics: Arc<Metrics>,
 
     /// Wired from `serve` after [`crate::swarm::SwarmManager`] exists (optional).
     pub swarm_manager: tokio::sync::RwLock<Option<Arc<crate::swarm::SwarmManager>>>,
@@ -224,26 +227,27 @@ impl Runtime {
 
         let prompts = crate::prompts::load_prompt_bundle(&config);
 
-        Ok(Self {
-            identity,
-            database,
-            wallet,
-            job_manager,
-            network,
-            executor,
-            inference,
-            model_distributor,
-            job_provider,
-            remote_executor,
-            batch_aggregator,
-            tools,
-            skills,
-            provider_tracker,
-            local_peer_id,
-            config,
-            prompts,
-            a2a,
-            swarm_manager: tokio::sync::RwLock::new(None),
+Ok(Self {
+             identity,
+             database,
+             wallet,
+             job_manager,
+             network,
+             executor,
+             inference,
+             model_distributor,
+             job_provider,
+             remote_executor,
+             batch_aggregator,
+             tools,
+             skills,
+             provider_tracker,
+             local_peer_id,
+             config,
+             prompts,
+             a2a,
+             metrics: Arc::new(Metrics::new()),
+             swarm_manager: tokio::sync::RwLock::new(None),
         })
     }
 
