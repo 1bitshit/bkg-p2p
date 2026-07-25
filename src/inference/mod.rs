@@ -44,6 +44,7 @@ pub fn silence_llama_logs() {
 pub mod batch;
 pub mod cache;
 pub mod distribution;
+pub mod distributed;
 pub mod failover;
 pub mod gguf;
 pub mod live_settings;
@@ -65,6 +66,10 @@ pub use cache::{CacheError, LoadedModel, ModelCache, ModelHandle};
 pub use distribution::{
     DistributionError, DownloadProgress, ModelAnnouncement, ModelDistributionMessage,
     ModelDistributor, ModelMetadata, CHUNK_SIZE,
+};
+pub use distributed::{
+    DistributedInferenceConfig, DistributedInferenceEngine, DistributedResult,
+    RemoteInferenceRequest, RemoteInferenceResponse, handle_remote_inference_request,
 };
 pub use failover::{BackendId, ErrorKind, FailoverChain};
 pub use gguf::{
