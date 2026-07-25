@@ -46,6 +46,8 @@ pub struct Network {
     config: P2pConfig,
     /// Shared A2A task/card state (HTTP + request-response).
     a2a_state: Arc<A2aState>,
+    /// Actual listen addresses resolved after binding (includes dynamic ports).
+    listen_addresses: Vec<Multiaddr>,
 }
 
 impl Network {
@@ -69,6 +71,7 @@ impl Network {
             connected_peers: HashSet::new(),
             config,
             a2a_state,
+            listen_addresses: Vec::new(),
         })
     }
 
@@ -89,6 +92,11 @@ impl Network {
     /// Get the list of connected peers.
     pub fn connected_peers(&self) -> Vec<PeerId> {
         self.connected_peers.iter().cloned().collect()
+    }
+
+    /// Get the actual listen multiaddresses (after port binding).
+    pub fn listen_addresses(&self) -> &[Multiaddr] {
+        &self.listen_addresses
     }
 
     /// Dial a remote peer by multiaddress.
@@ -161,6 +169,9 @@ impl Network {
         match event {
             SwarmEvent::NewListenAddr { address, .. } => {
                 tracing::info!("Listening on {}", address);
+                if !self.listen_addresses.contains(&address) {
+                    self.listen_addresses.push(address);
+                }
                 None
             }
 

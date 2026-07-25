@@ -339,6 +339,7 @@ pub async fn run(args: ServeArgs) -> anyhow::Result<()> {
             let (crew_kickoff_tx, crew_kickoff_rx) = mpsc::channel::<crate::web::CrewKickoffJob>(8);
             let (flow_kickoff_tx, flow_kickoff_rx) = mpsc::channel::<crate::web::FlowKickoffJob>(8);
             let (peer_dial_tx, peer_dial_rx) = mpsc::channel::<String>(32);
+            let listen_addrs_clone = std::sync::Arc::new(tokio::sync::RwLock::new(Vec::<String>::new()));
             let p2p_network_hints = std::sync::Arc::new(crate::web::P2pNetworkHints {
                 bootstrap_peers: config.p2p.bootstrap_peers.clone(),
                 mdns_enabled: config.p2p.mdns_enabled,
@@ -383,6 +384,7 @@ pub async fn run(args: ServeArgs) -> anyhow::Result<()> {
                 wallet: None,
                 vector_store: Some(crate::vector::get_or_init_vector_store()),
                 verbose_agentic_io: args.verbose_agentic,
+                listen_addresses: listen_addrs_clone.clone(),
                 a2a: runtime.a2a.clone(),
                 a2a_public_base_url: format!("http://{}", config.web.listen_addr),
                 crew_store: crew_store.clone(),
@@ -1032,6 +1034,17 @@ pub async fn run(args: ServeArgs) -> anyhow::Result<()> {
         if stats_interval.tick().now_or_never().is_some() {
             if let Some(ref state) = web_state {
                 *state.wallet_balance.write().await = runtime.balance().await;
+
+                // Sync P2P listen addresses from swarm
+                {
+                    let network = runtime.network.read().await;
+                    let addrs: Vec<String> = network
+                        .listen_addresses()
+                        .iter()
+                        .map(|a| a.to_string())
+                        .collect();
+                    *state.listen_addresses.write().await = addrs;
+                }
 
                 // Update job counts and list
                 let job_manager = runtime.job_manager.read().await;
