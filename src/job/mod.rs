@@ -18,6 +18,7 @@ pub use request::{JobId, JobRequest, JobRequirements};
 
 use crate::wallet::{Wallet, WalletError};
 use chrono::Utc;
+use tracing;
 use std::collections::HashMap;
 use std::sync::Arc;
 use thiserror::Error;
@@ -364,6 +365,7 @@ impl JobManager {
 
     /// Mark a job as in progress.
     pub async fn start_job(&self, job_id: &JobId) -> Result<(), JobError> {
+        let _phase = tracing::info_span!("job_phase", phase = "in_progress", %job_id).entered();
         let mut jobs = self.active_jobs.write().await;
         if let Some(job) = jobs.get_mut(job_id) {
             job.status = JobStatus::InProgress;
@@ -376,6 +378,7 @@ impl JobManager {
 
     /// Submit a job result.
     pub async fn submit_result(&self, job_id: &JobId, result: JobResult) -> Result<(), JobError> {
+        let _phase = tracing::info_span!("job_phase", phase = "result_submitted", %job_id).entered();
         let mut jobs = self.active_jobs.write().await;
         if let Some(job) = jobs.get_mut(job_id) {
             job.result = Some(result);
@@ -388,6 +391,12 @@ impl JobManager {
 
     /// Verify and settle a completed job.
     pub async fn settle_job(&self, job_id: &JobId, success: bool) -> Result<(), JobError> {
+        let _phase = tracing::info_span!(
+            "job_phase",
+            phase = "settled",
+            %job_id,
+            success
+        );
         let job = {
             let mut jobs = self.active_jobs.write().await;
             jobs.remove(job_id)

@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use tracing;
 
 use crate::mcp::McpManager;
 use crate::tools::{NodeToolTx, ToolContext, ToolLocation, ToolRegistry};
@@ -263,6 +264,7 @@ pub async fn run_unified_agentic_loop(
     progress: Option<Arc<dyn AgenticProgressSink>>,
     cancel: Option<&AtomicBool>,
     verbose_tool_io: bool,
+    run_id: Option<&str>,
 ) -> Result<(AgenticTurnOutcome, Vec<String>, Vec<ToolCallRecord>, u32), String> {
     let max_tokens = max_tokens.min(16384);
     let prefix = build_agentic_system_prefix(
@@ -295,12 +297,19 @@ pub async fn run_unified_agentic_loop(
     let mut url_fetch_nudges: u32 = 0;
 
     for iter in 1..=AGENTIC_MAX_ITERS {
-        if conversation.len() > conv_max_chars {
-            conversation =
-                compaction::prune_string_conversation(&conversation, prefix_len, conv_max_chars);
-        }
+         let _pass_span = tracing::info_span!(
+             "react_pass",
+             iter,
+             run_id = run_id.unwrap_or("none"),
+             model = %model
+         );
+         let _enter = _pass_span.enter();
+         if conversation.len() > conv_max_chars {
+             conversation =
+                 compaction::prune_string_conversation(&conversation, prefix_len, conv_max_chars);
+         }
 
-        if iter == AGENTIC_MAX_ITERS {
+         if iter == AGENTIC_MAX_ITERS {
             conversation.push_str("\n\n");
             conversation.push_str(prompts.unified_final_turn_suffix.trim());
             conversation.push('\n');
@@ -585,9 +594,15 @@ pub async fn run_unified_agentic_loop(
         let mut pass_failures = 0u32;
         let call_count = calls.len();
 
-        for call in calls {
-            // Emit structured "started" event.
-            if let Some(ref p) = progress {
+for call in calls {
+             let _tool_span = tracing::info_span!(
+                 "tool_execute",
+                 tool = %call.name,
+                 run_id = run_id.unwrap_or("none")
+             );
+             let _enter_tool = _tool_span.enter();
+             // Emit structured "started" event.
+             if let Some(ref p) = progress {
                 let args_preview: String = call.args.to_string().chars().take(500).collect();
                 p.record_tool_call(&call.name, "started", &args_preview, "")
                     .await;

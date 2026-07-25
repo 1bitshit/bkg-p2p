@@ -11,6 +11,7 @@ use crate::agent::budget::BudgetTracker;
 use crate::agent::runtime::{AgentConfig, AgentRuntime, AgentTaskExtras};
 use crate::executor::TaskExecutor;
 use crate::tools::{NodeToolTx, ToolRegistry};
+use tracing;
 
 use super::spec::{CrewProcess, CrewSpec};
 
@@ -161,7 +162,13 @@ pub async fn run_crew(
     let mut total_tokens = 0u32;
 
     for task in &spec.tasks {
-        let agent = spec
+         let _task_span = tracing::info_span!(
+             "crew_task",
+             task_id = %task.id,
+             agent_id = %task.agent_id
+         );
+         let _enter_task = _task_span.enter();
+         let agent = spec
             .agents
             .iter()
             .find(|a| a.id == task.agent_id)
