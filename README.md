@@ -516,23 +516,104 @@ Create `~/.bkg-peer/config.toml`:
 listen_addresses = ["/ip4/0.0.0.0/tcp/0"]
 bootstrap_peers = []
 mdns_enabled = true
+kademlia_enabled = true
+advertise_interval_secs = 300
 
 [web]
 enabled = false
 listen_addr = "127.0.0.1:8080"
 
-[inference]
-models_path = "~/.bkg-peer/models"
+[resources]
+advertise_gpu = true
+cpu_cores = 5
+storage_bytes = 5545115
+ram_mb = 16225
+
+[database]
+path = "~/.bkg-peer/data"
+
+[agent]
+max_agents = 10
 default_model = "llama-3.2-3b"
+tool_timeout_secs = 60
+
+[inference]
+models_dir = "~/.bkg-peer/models"
+default_model = "llama-3.2-3b"
+max_loaded_models = 5
+max_memory_mb = 16000
+gpu_layers = -1
+context_size = 4096
+batch_size = 512
+enable_p2p_download = true
+use_ollama = false
+ollama_url = "http://localhost:11434"
+use_local_gguf = true
+remote_api_enabled = false
+remote_api_base_url = ""
+remote_api_model = ""
+remote_api_key = ""
 
 [vector]
 embedding_dim = 384
-persistence_path = "~/.bkg-peer/vector"
+use_hnsw = true
+enable_bm25 = true
+distance = "Cosine"
 
 [safety]
-leak_detection = true
-injection_defense = true
-policy_enforcement = true
+leak_detection_enabled = true
+injection_defense_enabled = true
+policy_enabled = true
+max_output_length = 100000
+redaction_string = "[REDACTED]"
+tool_timeout = 30
+
+[executor]
+local_utilization_threshold = 0.8
+offload_threshold = 0.9
+allow_network_offload = true
+max_concurrent_inference = 2
+max_concurrent_wasm = 10
+max_web_response_size = 10485760
+default_web_timeout_secs = 30
+batch_window_ms = 50
+max_batch_size = 8
+min_batch_size = 4
+
+[wasm]
+tools_dir = "~/.bkg-peer/tools"
+max_memory_mb = 256
+default_fuel_limit = 100000000
+timeout_secs = 60
+
+[economy]
+enabled = true
+inference_price_per_1k = 500000
+tool_price_per_call = 20000
+
+[provider_sharing]
+enabled = false
+advertise_models = true
+max_requests_per_hour = 60
+max_tokens_per_day = 100000
+max_concurrent_requests = 2
+price_multiplier = 1.0
+
+[skills]
+directory = "~/.bkg-peer/skills"
+
+[mcp]
+enabled = true
+timeout_secs = 30
+auto_reconnect = true
+
+[[mcp.servers]]
+
+[orchestration]
+crew_worker = false
+
+[prompts]
+directory = "~/.bkg-peer/prompts"
 ```
 
 ---
