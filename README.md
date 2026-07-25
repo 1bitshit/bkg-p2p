@@ -649,15 +649,21 @@ bkg-peer test cluster --nodes 3           # Spawn test cluster
 - **v0.4** — Agent runtime (ReAct), LLM provider sharing, remote execution, tasks/providers dashboard, budget enforcement, crew orchestration, flows, A2A HTTP, Python SDK
 - **v0.5** — Unified workflows, visual builder, agent library, multi-step templates, real-time WebSocket streaming, prompt customization
 
-### In Progress
+### In Progress (v0.5)
 
-- [ ] Distributed inference (pipeline/tensor parallelism across peers)
-- [ ] Multi-agent hardening (production QA, load tests, CI fixtures)
-- [ ] Durable agent runs (checkpoint, resume, audit export)
-- [ ] Observability (structured traces, OTLP export)
-- [ ] Cross-peer tool execution with reputation signals
-- [ ] Human-in-the-loop (policy-gated pause/approve for high-risk actions)
-- [ ] Context compaction (LLM summarization for long sessions)
+- [x] **Multi-agent orchestration** — crews, flows, P2P crew market, visual workflow builder, 4 multi-step templates, real-time streaming
+- [x] **LLM provider sharing** — remote inference with BKG escrow billing, provider discovery
+- [x] **Agent runtime** — ReAct loop, budget enforcement, TOML specs, 20+ builtin tools, WASM sandbox, MCP
+- [x] **Safety layer** — leak detection, prompt injection defense, SSRF guard, egress filtering
+- [x] **Swarm visualization** — D3.js topology, agent cards, event timeline
+- [x] **Python SDK** — validate + kickoff + poll
+- [x] **A2A integration** — agent cards, JSON-RPC, GossipSub peer discovery
+- [ ] **Durable agent runs** — redb schema for `runs` + `run_events`, checkpoint/resume, audit export
+- [ ] **Observability maturity** — tracing spans with `run_id`, metrics endpoint, OTLP export
+- [ ] **Distributed inference (2-peer pipeline)** — feature-flagged, behind `config.inference.distributed_pipeline`
+- [ ] **Cross-peer tool execution** — tool manifest GossipSub advertising, escrow execution, signed receipts
+- [ ] **HITL (Human-in-the-loop)** — approval state machine, API + web UI queue, timeout policy
+- [ ] **Context compaction** — configurable policy (truncate/summarize/hybrid), per-surface, web visibility
 
 ### Future (v1.0)
 
@@ -665,6 +671,7 @@ bkg-peer test cluster --nodes 3           # Spawn test cluster
 - [ ] Public tool registry
 - [ ] Governance
 - [ ] Firecracker microVM isolation
+- [ ] Auto-peer clustering with team roles (admin, member, observer)
 
 ---
 
