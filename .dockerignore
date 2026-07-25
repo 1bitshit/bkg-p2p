@@ -10,3 +10,10 @@ web/dist/
 .DS_Store
 docs/screenshots/
 docs/images/
+tests/
+sdk/
+scripts/
+README.md
+CLAUDE.md
+update.md
+docker-compose.yml

@@ -7,17 +7,24 @@ COPY web/ .
 RUN npm run build
 
 # ── Stage 2: Build Rust binary ─────────────────────────────────────
-FROM rust:1.83-bookworm AS builder
+FROM rust:1.88-bookworm AS builder
 RUN apt-get update && apt-get install -y \
     cmake pkg-config libssl-dev protobuf-compiler \
+    libclang-dev clang \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-# Cache dependencies first
-COPY Cargo.toml Cargo.lock ./
-COPY src/ src/
+
+# Cache dependencies: copy manifests, build.rs, and compile-time assets,
+# create dummy src so cargo resolves + builds all deps without real source.
+COPY Cargo.toml Cargo.lock build.rs ./
 COPY prompts/ prompts/
 COPY templates/ templates/
-RUN cargo build --release
+RUN mkdir -p src && echo 'fn main() {}' > src/main.rs
+RUN cargo build --release 2>/dev/null || true
+
+# Now copy real source and rebuild (deps are cached)
+COPY src/ src/
+RUN touch src/main.rs && cargo build --release
 
 # ── Stage 3: Runtime ───────────────────────────────────────────────
 FROM debian:bookworm-slim
