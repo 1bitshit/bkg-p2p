@@ -220,6 +220,8 @@ pub verbose_agentic_io: bool,
     pub listen_addresses: Arc<tokio::sync::RwLock<Vec<String>>>,
     /// Prometheus-style metrics snapshot for `/api/metrics`.
     pub metrics: Option<Arc<crate::observability::Metrics>>,
+    /// HITL approval store for human-in-the-loop gate.
+    pub hitl_store: Arc<crate::hitl::HitlStore>,
     /// A2A task store + discovered peer agent cards (shared with P2P).
     pub a2a: Arc<crate::a2a::A2aState>,
     /// Public base URL for this node's HTTP surface (e.g. `http://127.0.0.1:8080`) for Agent Card.
@@ -473,6 +475,9 @@ fn api_router() -> Router<Arc<WebState>> {
         .route("/tools/:name", get(api_tool_detail))
         .route("/a2a/peers", get(api_a2a_peers))
          .route("/metrics", get(api_metrics))
+         .route("/approvals", get(api_approvals_list))
+         .route("/approvals/:id/approve", post(api_approvals_approve))
+         .route("/approvals/:id/reject", post(api_approvals_reject))
 }
 
 /// Create the web router.
@@ -546,6 +551,7 @@ pub fn create_web_state(
 verbose_agentic_io: false,
         database: None,
         metrics: None,
+        hitl_store: Arc::new(crate::hitl::HitlStore::new()),
         listen_addresses: Arc::new(tokio::sync::RwLock::new(Vec::new())),
         a2a: crate::a2a::A2aState::new(),
         a2a_public_base_url: "http://127.0.0.1:8080".to_string(),
@@ -600,6 +606,7 @@ pub fn create_web_state_with_channels(
 verbose_agentic_io: false,
         database: None,
         metrics: None,
+        hitl_store: Arc::new(crate::hitl::HitlStore::new()),
         listen_addresses: Arc::new(tokio::sync::RwLock::new(Vec::new())),
         a2a: crate::a2a::A2aState::new(),
         a2a_public_base_url: "http://127.0.0.1:8080".to_string(),
@@ -653,6 +660,7 @@ pub fn create_web_state_with_inference(
 verbose_agentic_io: false,
         database: None,
         metrics: None,
+        hitl_store: Arc::new(crate::hitl::HitlStore::new()),
         listen_addresses: Arc::new(tokio::sync::RwLock::new(Vec::new())),
         a2a: crate::a2a::A2aState::new(),
         a2a_public_base_url: "http://127.0.0.1:8080".to_string(),
@@ -706,6 +714,7 @@ pub fn create_web_state_with_swarm(
 verbose_agentic_io: false,
         database: None,
         metrics: None,
+        hitl_store: Arc::new(crate::hitl::HitlStore::new()),
         listen_addresses: Arc::new(tokio::sync::RwLock::new(Vec::new())),
         a2a: crate::a2a::A2aState::new(),
         a2a_public_base_url: "http://127.0.0.1:8080".to_string(),
@@ -1188,6 +1197,48 @@ None => Err(StatusCode::NOT_FOUND),
     gauges: std::collections::HashMap::new(),
     histograms: std::collections::HashMap::new(),
    }),
+  }
+ }
+
+ #[derive(Serialize)]
+ struct ApprovalsResponse {
+  approvals: Vec<crate::hitl::HitlRequest>,
+ }
+
+ #[derive(Deserialize)]
+ struct ApproveRequest {
+  by: String,
+ }
+
+ #[derive(Deserialize)]
+ struct RejectRequest {
+  by: String,
+ }
+
+ async fn api_approvals_list(State(state): State<Arc<WebState>>) -> Json<ApprovalsResponse> {
+  let approvals = state.hitl_store.list(None).await;
+  Json(ApprovalsResponse { approvals })
+ }
+
+ async fn api_approvals_approve(
+  State(state): State<Arc<WebState>>,
+  Path(id): Path<String>,
+  Json(body): Json<ApproveRequest>,
+ ) -> Result<Json<serde_json::Value>, StatusCode> {
+  match state.hitl_store.approve(&id, &body.by).await {
+   Ok(_) => Ok(Json(serde_json::json!({"id": id, "status": "approved"}))),
+   Err(e) => Err(StatusCode::BAD_REQUEST),
+  }
+ }
+
+ async fn api_approvals_reject(
+  State(state): State<Arc<WebState>>,
+  Path(id): Path<String>,
+  Json(body): Json<RejectRequest>,
+ ) -> Result<Json<serde_json::Value>, StatusCode> {
+  match state.hitl_store.reject(&id, &body.by).await {
+   Ok(_) => Ok(Json(serde_json::json!({"id": id, "status": "rejected"}))),
+   Err(e) => Err(StatusCode::BAD_REQUEST),
   }
  }
 
@@ -1877,6 +1928,8 @@ async fn run_unified_agentic_inference(
             progress_dyn,
             cancel_ref,
             state.verbose_agentic_io,
+            None,
+            Some(state.hitl_store.clone()),
         )
         .await?;
     Ok((

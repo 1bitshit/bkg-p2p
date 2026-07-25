@@ -969,6 +969,7 @@ async fn run_interpreter(
                     node_tool_tx.clone(),
                     prompts.clone(),
                     inference_sink.clone(),
+                    None,
                 );
                 let ctx_block = prior_context_block(spec, &cur, &outputs);
                 let tpl_ctx = build_template_context(inputs, &outputs);

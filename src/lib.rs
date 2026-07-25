@@ -31,6 +31,7 @@ pub mod reputation;
 pub mod routines;
 pub mod runtime;
 pub mod safety;
+pub mod hitl;
 pub mod skills;
 pub mod swarm;
 pub mod tools;

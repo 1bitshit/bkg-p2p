@@ -68,6 +68,7 @@ fn make_runtime_for_agent(
     node_tool_tx: Option<NodeToolTx>,
     prompts: Arc<crate::prompts::PromptBundle>,
     inference_sink: Option<Arc<dyn crate::agent::AgenticInferenceSink>>,
+    hitl_store: Option<Arc<crate::hitl::HitlStore>>,
 ) -> AgentRuntime {
     let system_prompt = prompts.crew_agent_system(&def.role, &def.goal, &def.backstory);
     let allowed = allowed_tools_for_agent(def, tools.as_ref());
@@ -92,6 +93,7 @@ fn make_runtime_for_agent(
         node_tool_tx,
         prompts,
         inference_sink,
+        hitl_store,
     );
     // Respect per-agent iteration cap inside unified loop via config if needed — runtime uses AGENTIC_MAX_ITERS global; we clip via early description only for now.
     let _ = max_iter;
@@ -144,8 +146,9 @@ pub async fn run_crew(
             peer_id.clone(),
             node_tool_tx.clone(),
             prompts.clone(),
-            inference_sink.clone(),
-        );
+inference_sink.clone(),
+        None,
+    );
         let plan_prompt = format!(
             "You coordinate this crew. Tasks (in order): {:?}.\nInputs: {}\nReply with a short bullet plan (max 8 lines) for how the crew should execute.",
             task_list,
@@ -197,8 +200,9 @@ pub async fn run_crew(
             peer_id.clone(),
             node_tool_tx.clone(),
             prompts.clone(),
-            inference_sink.clone(),
-        );
+inference_sink.clone(),
+        None,
+    );
         let res = rt
             .run_task_with_session(&user_block, cancel, None, extras.clone())
             .await;
@@ -294,8 +298,9 @@ async fn run_crew_delegate(
             peer_id.clone(),
             node_tool_tx.clone(),
             prompts.clone(),
-            inference_sink.clone(),
-        );
+inference_sink.clone(),
+        None,
+    );
         let res = rt
             .run_task_with_session(&user_block, cancel, None, extras.clone())
             .await;

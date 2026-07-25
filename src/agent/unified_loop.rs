@@ -265,6 +265,7 @@ pub async fn run_unified_agentic_loop(
     cancel: Option<&AtomicBool>,
     verbose_tool_io: bool,
     run_id: Option<&str>,
+    hitl_store: Option<Arc<crate::hitl::HitlStore>>,
 ) -> Result<(AgenticTurnOutcome, Vec<String>, Vec<ToolCallRecord>, u32), String> {
     let max_tokens = max_tokens.min(16384);
     let prefix = build_agentic_system_prefix(
@@ -680,6 +681,62 @@ for call in calls {
                             egress_policy: None,
                             agent_depth: 0,
                         };
+                        // HITL gate: block execution of tools that require explicit approval.
+                        if let Some(ref store) = hitl_store {
+                            if let Some(tool) = registry.as_ref().and_then(|r| r.get(&call.name)) {
+                                if tool.approval_requirement()
+                                    == crate::tools::ApprovalRequirement::Always
+                                {
+                                    let hitl_id = format!(
+                                        "hitl-{}-{}-{}",
+                                        run_id.unwrap_or("none"),
+                                        call.name,
+                                        call.args
+                                            .to_string()
+                                            .chars()
+                                            .take(20)
+                                            .collect::<String>()
+                                    );
+                                    let now = chrono::Utc::now().to_rfc3339();
+                                    let req = crate::hitl::HitlRequest {
+                                        id: hitl_id.clone(),
+                                        run_id: run_id.map(|s| s.to_string()),
+                                        tool_name: call.name.clone(),
+                                        action: "execute".to_string(),
+                                        reason: format!(
+                                            "Tool '{}' requires explicit HITL approval",
+                                            call.name
+                                        ),
+                                        risk_level: crate::hitl::RiskLevel::High,
+                                        parameters_preview: call.args.clone(),
+                                        status: crate::hitl::HitlStatus::Pending,
+                                        created_at: now.clone(),
+                                        decided_at: None,
+                                        decided_by: None,
+                                        error: None,
+                                    };
+                                    store.enqueue(req).await;
+                                    if !store.is_approved(&hitl_id).await {
+                                        tool_logs.push(format!(
+                                            "[{}] {} → BLOCKED (pending HITL approval)",
+                                            chrono::Utc::now().format("%H:%M:%S"),
+                                            call.name
+                                        ));
+                                        if let Some(ref p) = progress {
+                                            p.record_tool_step(
+                                                format!(
+                                                    "Tool '{}' blocked pending HITL approval",
+                                                    call.name
+                                                ),
+                                                total_tokens,
+                                            )
+                                            .await;
+                                        }
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
                         match reg.execute_local(&call.name, call.args.clone(), &ctx).await {
                             Ok(r) => {
                                 let s = serde_json::to_string(&r.output)
@@ -833,6 +890,8 @@ mod tests {
             None,
             None,
             false,
+            None,
+            None,
         )
         .await
         .expect("loop");

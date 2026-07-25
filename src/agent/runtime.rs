@@ -153,6 +153,8 @@ pub struct AgentRuntime {
     pub inference_sink: Option<Arc<dyn AgenticInferenceSink>>,
     /// Shared prompt fragments (same as node `Runtime`).
     pub prompts: Arc<crate::prompts::PromptBundle>,
+    /// HITL store for human-in-the-loop approval gate.
+    pub hitl_store: Option<Arc<crate::hitl::HitlStore>>,
 }
 
 impl AgentRuntime {
@@ -166,6 +168,7 @@ impl AgentRuntime {
         node_tool_tx: Option<NodeToolTx>,
         prompts: Arc<crate::prompts::PromptBundle>,
         inference_sink: Option<Arc<dyn AgenticInferenceSink>>,
+        hitl_store: Option<Arc<crate::hitl::HitlStore>>,
     ) -> Self {
         let tool_context = ToolContext {
             session_id: config.id.clone(),
@@ -191,6 +194,7 @@ impl AgentRuntime {
             vector_store: None,
             inference_sink,
             prompts,
+            hitl_store,
         }
     }
 
@@ -687,6 +691,8 @@ impl AgentRuntime {
             Some(progress),
             stop,
             false,
+            None,
+            self.hitl_store.clone(),
         )
         .await
         {
