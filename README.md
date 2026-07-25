@@ -285,8 +285,7 @@ HTTP endpoint that receives POST requests and responds with the agent's reply.
 
 ```toml
 [channels]
-webhook = true                  # Default port
-webhook = { port = 8090 }      # Custom port
+webhook = { port = 8090 }      # Default port 8090
 ```
 
 Send messages to the webhook:
@@ -530,7 +529,7 @@ storage_bytes = 5545115
 ram_mb = 16225
 
 [database]
-path = "~/.bkg-peer/data"
+path = "~/.bkg-peer/data/bkg-peer.redb"
 
 [agent]
 max_agents = 10
@@ -606,8 +605,7 @@ directory = "~/.bkg-peer/skills"
 enabled = true
 timeout_secs = 30
 auto_reconnect = true
-
-[[mcp.servers]]
+servers = []
 
 [orchestration]
 crew_worker = false
