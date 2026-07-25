@@ -153,7 +153,7 @@ pub struct SkillSharing {
     /// Whether this skill can be shared with other peers.
     #[serde(default)]
     pub enabled: bool,
-    /// Price to access this skill (in micro-PCLAW).
+    /// Price to access this skill (in micro-BKG).
     #[serde(default)]
     pub price: u64,
     /// Maximum uses per peer per day.

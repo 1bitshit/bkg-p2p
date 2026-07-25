@@ -75,7 +75,7 @@ pub struct JobBid {
     pub job_id: JobId,
     /// Peer making the bid
     pub bidder_id: String,
-    /// Offered price in μPCLAW
+    /// Offered price in μBKG
     pub price: u64,
     /// Estimated completion time in milliseconds
     pub estimated_latency_ms: u32,
@@ -137,8 +137,8 @@ impl JobBid {
         self.status == BidStatus::Pending && !self.is_expired()
     }
 
-    /// Get price in PCLAW.
-    pub fn price_pclaw(&self) -> f64 {
+    /// Get price in BKG.
+    pub fn price_bkg(&self) -> f64 {
         crate::wallet::from_micro(self.price)
     }
 
@@ -189,9 +189,9 @@ impl fmt::Display for JobBid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Bid[{}]: {:.6} PCLAW, {}ms latency, rep={:.2} ({})",
+            "Bid[{}]: {:.6} BKG, {}ms latency, rep={:.2} ({})",
             self.id,
-            self.price_pclaw(),
+            self.price_bkg(),
             self.estimated_latency_ms,
             self.reputation,
             self.status

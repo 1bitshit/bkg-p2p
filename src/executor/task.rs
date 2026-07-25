@@ -351,7 +351,7 @@ pub struct TaskResult {
     pub data: TaskData,
     /// Execution metrics
     pub metrics: TaskMetrics,
-    /// Cost in μPCLAW (if remote)
+    /// Cost in μBKG (if remote)
     pub cost: Option<u64>,
 }
 

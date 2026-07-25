@@ -7,7 +7,7 @@ use std::time::Instant;
 /// Tracks spending and enforces budget limits for an agent.
 #[derive(Debug, Clone)]
 pub struct BudgetTracker {
-    /// Maximum spend per single task/request (in PCLAW)
+    /// Maximum spend per single task/request (in BKG)
     pub per_request_limit: f64,
     /// Maximum spend per hour
     pub per_hour_limit: f64,
@@ -97,7 +97,7 @@ impl BudgetTracker {
 
 impl Default for BudgetTracker {
     fn default() -> Self {
-        // With 0.5 PCLAW/1K tokens: 10 PCLAW ≈ 20K tokens per request
+        // With 0.5 BKG/1K tokens: 10 BKG ≈ 20K tokens per request
         Self::new(10.0, 100.0, 500.0, 5000.0)
     }
 }

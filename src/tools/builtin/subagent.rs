@@ -46,7 +46,7 @@ impl Tool for SubAgentTool {
                 },
                 "budget": {
                     "type": "number",
-                    "description": "PCLAW budget for the sub-agent (default: 2.0, must be <= remaining parent budget)"
+                    "description": "BKG budget for the sub-agent (default: 2.0, must be <= remaining parent budget)"
                 },
                 "model": {
                     "type": "string",

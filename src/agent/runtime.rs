@@ -131,8 +131,8 @@ impl AgenticProgressSink for TaskLogProgressSink {
 /// Maximum number of iterations before stopping.
 const MAX_ITERATIONS: u32 = 20;
 
-/// Estimated cost per 1k tokens (in PCLAW) for budget tracking.
-/// Aligned with EconomyConfig default (0.5 PCLAW / 1K tokens for small models).
+/// Estimated cost per 1k tokens (in BKG) for budget tracking.
+/// Aligned with EconomyConfig default (0.5 BKG / 1K tokens for small models).
 const COST_PER_1K_TOKENS: f64 = 0.5;
 
 /// The core agent runtime.
@@ -1447,7 +1447,7 @@ More text."#;
 
     #[test]
     fn test_extract_answer_strips_wallet_balance_pseudo_tag() {
-        let text = "Your balance:\n<wallet_balance>100 PCLAW</wallet_balance>\nDone.";
+        let text = "Your balance:\n<wallet_balance>100 BKG</wallet_balance>\nDone.";
         let answer = extract_answer(text);
         assert!(answer.contains("Your balance:"));
         assert!(answer.contains("Done."));

@@ -1500,7 +1500,7 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Balance</div>
-                    <div class="stat-value" id="balance-value">0.000000 PCLAW</div>
+                    <div class="stat-value" id="balance-value">0.000000 BKG</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Connected Peers</div>
@@ -1536,7 +1536,7 @@
                 <button class="info-close" onclick="document.getElementById('info-banner').style.display='none'">&times;</button>
                 <strong>How bkg-peer fits together:</strong>
                 <strong style="color:var(--purple)">Agents</strong> (TOML specs) run tools in a loop for complex goals — start them from the dashboard <strong>Agent</strong> tab or CLI.
-                <strong style="color:var(--accent)">Jobs</strong> are marketplace work units (inference, web fetch, WASM) with PCLAW bids.
+                <strong style="color:var(--accent)">Jobs</strong> are marketplace work units (inference, web fetch, WASM) with BKG bids.
                 Your <strong style="color:var(--success)">node</strong> connects peers, runs agents, and can share inference on the Providers tab.
             </div>
             <div class="agents-toolbar">
@@ -1584,7 +1584,7 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>Max Budget (PCLAW)</label>
+                                <label>Max Budget (BKG)</label>
                                 <input type="number" id="job-budget" value="1.0" step="0.1" min="0.1">
                             </div>
                         </div>
@@ -1685,7 +1685,7 @@
                                 </select>
                                 </div>
                                 <div class="form-group" style="margin:0;min-width:120px">
-                                    <label for="task-budget">Budget (PCLAW)</label>
+                                    <label for="task-budget">Budget (BKG)</label>
                                     <input type="number" id="task-budget" value="5" step="0.5" min="0.5" max="500" style="width:100%;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;padding:0.5rem 0.75rem;color:var(--text-primary);font-size:0.8125rem" title="Approximate spend cap for this run">
                                 </div>
                                 <button type="button" class="btn btn-primary" onclick="createTask()" id="run-task-btn" style="margin-bottom:1px">Run agent</button>
@@ -1924,7 +1924,7 @@
                     setWidth('gpu-bar', `${d.gpu_usage * 100}%`);
                 }
 
-                setText('balance-value', `${d.balance.toFixed(6)} PCLAW`);
+                setText('balance-value', `${d.balance.toFixed(6)} BKG`);
                 setText('hdr-balance', d.balance.toFixed(2));
                 setText('active-jobs', d.active_jobs);
                 setText('completed-jobs', d.completed_jobs);
@@ -2249,7 +2249,7 @@
                             <span style="color:${isLocal ? 'var(--accent)' : 'var(--success)'}">Provider: ${escHtml(providerDisplay)}</span>
                             &middot; Requester: ${escHtml(requesterDisplay)}
                         </div>
-                        <div class="job-price">${price} PCLAW</div>
+                        <div class="job-price">${price} BKG</div>
                         <div class="job-location">Executed: ${escHtml(location)}</div>
                     </div>
                     <span class="job-status ${statusClass}">${escHtml(job.status)}</span>
@@ -2800,7 +2800,7 @@
                     </div>
                     ${p.models.map(m => `<div style="display:flex;justify-content:space-between;padding:0.25rem 0;font-size:0.75rem">
                         <span style="color:var(--accent)">${m.model_name}</span>
-                        <span style="color:var(--text-secondary)">${m.price_per_1k_tokens} uPCLAW/1k | ctx:${m.context_size} | ${m.backend}</span>
+                        <span style="color:var(--text-secondary)">${m.price_per_1k_tokens} uBKG/1k | ctx:${m.context_size} | ${m.backend}</span>
                     </div>`).join('')}
                 </div>`).join('');
             } catch(e) {}
@@ -2843,7 +2843,7 @@
                     modelsEl.innerHTML = '<div style="font-size:0.75rem;font-weight:600;margin-bottom:0.5rem">Available Models</div>' +
                         n.models.map(m => `<div style="padding:0.375rem 0;border-bottom:1px solid var(--border);font-size:0.75rem">
                             <span style="color:var(--accent)">${m.model_name}</span>
-                            <span style="color:var(--text-secondary);float:right">${m.price_per_1k_tokens} uPCLAW/1k</span>
+                            <span style="color:var(--text-secondary);float:right">${m.price_per_1k_tokens} uBKG/1k</span>
                         </div>`).join('');
                 } else {
                     modelsEl.innerHTML = '';

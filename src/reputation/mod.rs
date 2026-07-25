@@ -10,5 +10,5 @@ pub mod trust;
 
 pub use types::*;
 pub use store::ReputationStore;
-pub use scorer::ReputationScorer;
-pub use trust::TrustLevel;
+pub use scorer::{ReputationScorer, VerificationLevel};
+pub use trust::TrustManager;

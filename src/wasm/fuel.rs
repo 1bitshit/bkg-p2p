@@ -92,9 +92,9 @@ impl FuelMeter {
     }
 
     /// Estimate cost based on fuel consumed and a rate.
-    /// Returns cost in μPCLAW.
-    pub fn estimate_cost(&self, fuel_per_micro_pclaw: u64) -> u64 {
-        self.consumed / fuel_per_micro_pclaw.max(1)
+    /// Returns cost in μBKG.
+    pub fn estimate_cost(&self, fuel_per_micro_bkg: u64) -> u64 {
+        self.consumed / fuel_per_micro_bkg.max(1)
     }
 }
 

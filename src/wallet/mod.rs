@@ -1,7 +1,7 @@
 //! Token wallet implementation for bkg-peer.
 //!
 //! Provides local token accounting, transaction management, and balance tracking.
-//! The PCLAW token has 6 decimal places (1 PCLAW = 1_000_000 μPCLAW).
+//! The BKG token has 6 decimal places (1 BKG = 1_000_000 μBKG).
 
 mod balance;
 mod escrow;
@@ -21,23 +21,23 @@ use thiserror::Error;
 use tokio::sync::RwLock;
 
 /// Token precision: 6 decimal places.
-/// 1 PCLAW = 1_000_000 μPCLAW (micro-PCLAW)
+/// 1 BKG = 1_000_000 μBKG (micro-BKG)
 pub const TOKEN_DECIMALS: u32 = 6;
-pub const MICRO_PCLAW: u64 = 1_000_000;
+pub const MICRO_BKG: u64 = 1_000_000;
 
-/// Convert PCLAW to μPCLAW
-pub fn to_micro(pclaw: f64) -> u64 {
-    (pclaw * MICRO_PCLAW as f64) as u64
+/// Convert BKG to μBKG
+pub fn to_micro(bkg: f64) -> u64 {
+    (bkg * MICRO_BKG as f64) as u64
 }
 
-/// Convert μPCLAW to PCLAW
+/// Convert μBKG to BKG
 pub fn from_micro(micro: u64) -> f64 {
-    micro as f64 / MICRO_PCLAW as f64
+    micro as f64 / MICRO_BKG as f64
 }
 
 #[derive(Error, Debug)]
 pub enum WalletError {
-    #[error("Insufficient balance: have {available} μPCLAW, need {required} μPCLAW")]
+    #[error("Insufficient balance: have {available} μBKG, need {required} μBKG")]
     InsufficientBalance { available: u64, required: u64 },
 
     #[error("Escrow not found: {0}")]
@@ -61,30 +61,30 @@ pub enum WalletError {
     #[error("Serialization error: {0}")]
     Serialization(String),
 
-    #[error("Spending limit exceeded: {limit_type} limit is {limit} μPCLAW")]
+    #[error("Spending limit exceeded: {limit_type} limit is {limit} μBKG")]
     SpendingLimitExceeded { limit_type: String, limit: u64 },
 }
 
 /// Wallet configuration for spending controls.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WalletConfig {
-    /// Maximum tokens to spend per single transaction (in μPCLAW)
+    /// Maximum tokens to spend per single transaction (in μBKG)
     pub max_spend_per_tx: u64,
-    /// Maximum tokens to spend per hour (in μPCLAW)
+    /// Maximum tokens to spend per hour (in μBKG)
     pub max_spend_per_hour: u64,
-    /// Maximum tokens to spend per day (in μPCLAW)
+    /// Maximum tokens to spend per day (in μBKG)
     pub max_spend_per_day: u64,
-    /// Reserve balance to always maintain (in μPCLAW)
+    /// Reserve balance to always maintain (in μBKG)
     pub reserve_balance: u64,
 }
 
 impl Default for WalletConfig {
     fn default() -> Self {
         Self {
-            max_spend_per_tx: to_micro(100.0),   // 100 PCLAW per tx
-            max_spend_per_hour: to_micro(500.0), // 500 PCLAW per hour
-            max_spend_per_day: to_micro(2000.0), // 2000 PCLAW per day
-            reserve_balance: to_micro(100.0),    // Keep 100 PCLAW reserve
+            max_spend_per_tx: to_micro(100.0),   // 100 BKG per tx
+            max_spend_per_hour: to_micro(500.0), // 500 BKG per hour
+            max_spend_per_day: to_micro(2000.0), // 2000 BKG per day
+            reserve_balance: to_micro(100.0),    // Keep 100 BKG reserve
         }
     }
 }
@@ -100,11 +100,11 @@ pub struct Wallet {
 /// Persistent wallet state.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct WalletState {
-    /// Available balance in μPCLAW
+    /// Available balance in μBKG
     pub available: u64,
-    /// Amount currently held in escrow in μPCLAW
+    /// Amount currently held in escrow in μBKG
     pub in_escrow: u64,
-    /// Amount staked as provider bond in μPCLAW
+    /// Amount staked as provider bond in μBKG
     pub staked: u64,
     /// Active escrows
     pub escrows: HashMap<EscrowId, Escrow>,

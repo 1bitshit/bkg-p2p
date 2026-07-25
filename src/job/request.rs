@@ -75,7 +75,7 @@ pub struct JobRequest {
     pub resource_type: ResourceType,
     /// Number of units (interpretation depends on resource type)
     pub units: u32,
-    /// Maximum budget in μPCLAW
+    /// Maximum budget in μBKG
     pub max_budget: u64,
     /// Job requirements
     pub requirements: JobRequirements,
@@ -158,8 +158,8 @@ impl JobRequest {
         }
     }
 
-    /// Get budget in PCLAW.
-    pub fn budget_pclaw(&self) -> f64 {
+    /// Get budget in BKG.
+    pub fn budget_bkg(&self) -> f64 {
         crate::wallet::from_micro(self.max_budget)
     }
 }
@@ -168,10 +168,10 @@ impl fmt::Display for JobRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "JobRequest[{}]: {} (budget: {:.6} PCLAW, timeout: {}s)",
+            "JobRequest[{}]: {} (budget: {:.6} BKG, timeout: {}s)",
             self.id,
             self.resource_type,
-            self.budget_pclaw(),
+            self.budget_bkg(),
             self.timeout_secs
         )
     }

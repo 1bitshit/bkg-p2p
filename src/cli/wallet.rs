@@ -28,7 +28,7 @@ pub enum WalletCommand {
         #[arg(value_name = "TO")]
         to: String,
 
-        /// Amount to send (in PCLAW)
+        /// Amount to send (in BKG)
         #[arg(value_name = "AMOUNT")]
         amount: f64,
     },
@@ -45,14 +45,14 @@ pub enum WalletCommand {
 
     /// Stake tokens as resource provider bond
     Stake {
-        /// Amount to stake (in PCLAW)
+        /// Amount to stake (in BKG)
         #[arg(value_name = "AMOUNT")]
         amount: f64,
     },
 
     /// Unstake tokens (withdraw from provider bond)
     Unstake {
-        /// Amount to unstake (in PCLAW)
+        /// Amount to unstake (in BKG)
         #[arg(value_name = "AMOUNT")]
         amount: f64,
     },
@@ -119,7 +119,7 @@ pub async fn run(cmd: WalletCommand) -> anyhow::Result<()> {
             println!("✓ Wallet created successfully!");
             println!("  Address: {}", identity.peer_id());
             println!("  Keyfile: {:?}", path);
-            println!("  Balance: 0.000000 PCLAW");
+            println!("  Balance: 0.000000 BKG");
         }
 
         WalletCommand::Balance => {
@@ -129,16 +129,16 @@ pub async fn run(cmd: WalletCommand) -> anyhow::Result<()> {
             println!("Wallet Balance");
             println!("--------------");
             println!(
-                "  Available:  {:>12.6} PCLAW",
+                "  Available:  {:>12.6} BKG",
                 from_micro(balance.available)
             );
             println!(
-                "  In escrow:  {:>12.6} PCLAW",
+                "  In escrow:  {:>12.6} BKG",
                 from_micro(balance.in_escrow)
             );
-            println!("  Staked:     {:>12.6} PCLAW", from_micro(balance.staked));
+            println!("  Staked:     {:>12.6} BKG", from_micro(balance.staked));
             println!("  ─────────────────────────");
-            println!("  Total:      {:>12.6} PCLAW", from_micro(balance.total));
+            println!("  Total:      {:>12.6} BKG", from_micro(balance.total));
         }
 
         WalletCommand::Send { to, amount } => {
@@ -158,7 +158,7 @@ pub async fn run(cmd: WalletCommand) -> anyhow::Result<()> {
 
             println!("✓ Transfer initiated");
             println!("  To:     {}", to);
-            println!("  Amount: {:.6} PCLAW", amount);
+            println!("  Amount: {:.6} BKG", amount);
             println!("  Escrow: {}", escrow.id);
             println!();
             println!("Note: Transfer held in escrow until recipient confirms.");
@@ -198,7 +198,7 @@ pub async fn run(cmd: WalletCommand) -> anyhow::Result<()> {
             println!("Public Key: {}", hex::encode(identity.public_key_bytes()));
             println!("Keyfile:    {:?}", identity_path);
             println!();
-            println!("Balance:    {:.6} PCLAW", from_micro(balance.total));
+            println!("Balance:    {:.6} BKG", from_micro(balance.total));
         }
 
         WalletCommand::Stake { amount } => {
@@ -211,9 +211,9 @@ pub async fn run(cmd: WalletCommand) -> anyhow::Result<()> {
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
             let balance = wallet.balance().await;
-            println!("✓ Staked {:.6} PCLAW", amount);
+            println!("✓ Staked {:.6} BKG", amount);
             println!(
-                "  New staked balance: {:.6} PCLAW",
+                "  New staked balance: {:.6} BKG",
                 from_micro(balance.staked)
             );
         }
@@ -228,9 +228,9 @@ pub async fn run(cmd: WalletCommand) -> anyhow::Result<()> {
                 .map_err(|e| anyhow::anyhow!("{}", e))?;
 
             let balance = wallet.balance().await;
-            println!("✓ Unstaked {:.6} PCLAW", amount);
+            println!("✓ Unstaked {:.6} BKG", amount);
             println!(
-                "  New staked balance: {:.6} PCLAW",
+                "  New staked balance: {:.6} BKG",
                 from_micro(balance.staked)
             );
         }
@@ -258,17 +258,17 @@ pub async fn run(cmd: WalletCommand) -> anyhow::Result<()> {
                     };
 
                     println!(
-                        "{}: {:.6} PCLAW → {} (expires in {})",
+                        "{}: {:.6} BKG → {} (expires in {})",
                         escrow.id,
-                        escrow.amount_pclaw(),
+                        escrow.amount_bkg(),
                         escrow.recipient,
                         remaining_str
                     );
                 }
                 println!();
                 println!(
-                    "Total in escrow: {:.6} PCLAW",
-                    escrows.iter().map(|e| e.amount_pclaw()).sum::<f64>()
+                    "Total in escrow: {:.6} BKG",
+                    escrows.iter().map(|e| e.amount_bkg()).sum::<f64>()
                 );
             }
         }

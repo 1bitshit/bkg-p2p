@@ -35,7 +35,7 @@ pub enum JobCommand {
         #[arg(long, default_value = "100")]
         max_tokens: u32,
 
-        /// Maximum budget in PCLAW
+        /// Maximum budget in BKG
         #[arg(long, default_value = "10.0")]
         budget: f64,
 
@@ -50,7 +50,7 @@ pub enum JobCommand {
         #[arg(long)]
         url: String,
 
-        /// Maximum budget in PCLAW
+        /// Maximum budget in BKG
         #[arg(long, default_value = "1.0")]
         budget: f64,
 
@@ -125,7 +125,7 @@ async fn run_inference_job(
     println!("Model: {}", model);
     println!("Prompt: {}...", &prompt[..prompt.len().min(50)]);
     println!("Max tokens: {}", max_tokens);
-    println!("Budget: {:.6} PCLAW", budget);
+    println!("Budget: {:.6} BKG", budget);
     println!("Timeout: {}s", timeout);
     println!();
 
@@ -214,7 +214,7 @@ async fn run_inference_job(
         println!("\nBids received:");
         for (i, bid) in bids.iter().enumerate() {
             println!(
-                "  {}. Peer: {}... | Price: {:.6} PCLAW | Latency: {}ms",
+                "  {}. Peer: {}... | Price: {:.6} BKG | Latency: {}ms",
                 i + 1,
                 &bid.bidder_id[..16.min(bid.bidder_id.len())],
                 from_micro(bid.price),
@@ -269,7 +269,7 @@ async fn run_inference_job(
 async fn run_fetch_job(url: &str, budget: f64, timeout: u64) -> anyhow::Result<()> {
     println!("=== Submit Web Fetch Job ===");
     println!("URL: {}", url);
-    println!("Budget: {:.6} PCLAW", budget);
+    println!("Budget: {:.6} BKG", budget);
     println!("Timeout: {}s", timeout);
     println!();
 
@@ -311,7 +311,7 @@ async fn list_jobs() -> anyhow::Result<()> {
     } else {
         for job in &jobs {
             println!(
-                "Job: {} | Status: {} | Provider: {}... | Price: {:.6} PCLAW",
+                "Job: {} | Status: {} | Provider: {}... | Price: {:.6} BKG",
                 job.id,
                 job.status,
                 &job.bid.bidder_id[..16.min(job.bid.bidder_id.len())],
@@ -339,7 +339,7 @@ async fn show_history(limit: usize) -> anyhow::Result<()> {
                 .unwrap_or_else(|| "N/A".to_string());
 
             println!(
-                "Job: {} | Status: {} | Duration: {} | Price: {:.6} PCLAW",
+                "Job: {} | Status: {} | Duration: {} | Price: {:.6} BKG",
                 job.id,
                 job.status,
                 duration,
