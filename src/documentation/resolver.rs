@@ -1,9 +1,10 @@
+use crate::documentation::provider::DocumentationProvider;
 use crate::documentation::types::*;
 use anyhow::Result;
 
 /// Library resolver for documentation lookups
 pub struct LibraryResolver {
-    providers: Vec<Box<dyn DocumentationProvider>>,
+    pub(crate) providers: Vec<Box<dyn DocumentationProvider>>,
 }
 
 impl LibraryResolver {

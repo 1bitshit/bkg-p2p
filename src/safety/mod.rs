@@ -11,6 +11,7 @@ pub mod leak_detector;
 pub mod policy;
 pub mod sanitizer;
 pub mod ssrf;
+pub mod task_scanner;
 pub mod validator;
 
 use std::time::Duration;

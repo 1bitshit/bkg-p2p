@@ -32,14 +32,20 @@ impl TrustManager {
         }
     }
 
-    /// Calculate task acceptance probability based on reputation
+    /// Calculate task acceptance probability based on reputation and config thresholds
     pub fn acceptance_probability(&self, reputation: &PeerReputation) -> f64 {
-        match reputation.trust_level {
+        let min_interactions = self.config.min_interactions_for_score;
+        if reputation.total_interactions < min_interactions {
+            return 0.05;
+        }
+        let base = match reputation.trust_level {
             TrustLevel::Untrusted => 0.1,
             TrustLevel::Low => 0.3,
             TrustLevel::Medium => 0.6,
             TrustLevel::High => 0.9,
             TrustLevel::Verified => 1.0,
-        }
+        };
+        let decay = (-0.01 * self.config.decay_half_life_days).exp();
+        base * decay
     }
 }

@@ -13,7 +13,8 @@ impl BkgTracer {
     /// Create a new span
     pub fn span(&self, name: &str) -> Span {
         tracing::info_span!(
-            name,
+            "bkg_span",
+            name = %name,
             service = %self.service_name,
         )
     }
@@ -21,14 +22,24 @@ impl BkgTracer {
     /// Create a span with attributes
     pub fn span_with_attrs(&self, name: &str, attrs: Vec<(&str, String)>) -> Span {
         let span = tracing::info_span!(
-            name,
+            "bkg_span",
+            name = %name,
             service = %self.service_name,
         );
 
-        for (key, value) in attrs {
-            span.record(key, value);
+        for (key, value) in &attrs {
+            span.record(*key, field::display(value));
         }
 
         span
+    }
+
+    /// Create a debug-level span for verbose tracing
+    pub fn debug_span(&self, name: &str) -> Span {
+        tracing::debug_span!(
+            "bkg_debug",
+            name = %name,
+            service = %self.service_name,
+        )
     }
 }

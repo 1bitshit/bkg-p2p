@@ -3,10 +3,14 @@
 //! Provides peer discovery, messaging, and resource advertisement.
 
 mod behaviour;
+mod envelope;
 mod events;
+pub mod invite;
+pub mod permissions;
 pub mod provider;
 pub mod provider_tracker;
 mod resource;
+pub mod transfer;
 
 pub use behaviour::BkgPeerdBehaviour;
 pub use events::NetworkEvent;

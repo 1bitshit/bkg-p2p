@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::identity::PeerId;
+use libp2p::PeerId;
 use crate::p2p::envelope::P2PEnvelope;
 
 /// Peer invitation for direct connections

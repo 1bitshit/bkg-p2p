@@ -1,61 +1,72 @@
-use crate::skills::types::*;
-use anyhow::Result;
+use serde::{Deserialize, Serialize};
 
-/// Skill detector for automatic skill discovery
+use crate::skills::SkillManifest;
+
+/// Skill detector for automatic skill discovery based on task descriptions.
 pub struct SkillDetector {
-    config: SkillConfig,
+    available_skills: Vec<SkillManifest>,
+    detection_threshold: f64,
 }
 
 impl SkillDetector {
-    pub fn new(config: SkillConfig) -> Self {
-        Self { config }
+    pub fn new(available_skills: Vec<SkillManifest>, detection_threshold: f64) -> Self {
+        Self {
+            available_skills,
+            detection_threshold,
+        }
     }
 
-    /// Detect skills from a task description
-    pub async fn detect(&self, task: &str) -> Result<Vec<SkillMatch>> {
+    /// Detect skills that match a task description.
+    pub async fn detect(&self, task: &str) -> Vec<SkillMatch> {
         let mut matches = Vec::new();
 
-        // Simple keyword-based detection (TODO: Use embeddings for semantic matching)
-        for skill in &self.config.available_skills {
-            let score = self.match_score(task, &skill.keywords);
-            if score > self.config.detection_threshold {
+        for skill in &self.available_skills {
+            let keywords: Vec<String> = skill
+                .activation
+                .tags
+                .iter()
+                .map(|t| t.to_lowercase())
+                .chain(skill.name.split(|c: char| !c.is_alphanumeric()).map(|s| s.to_lowercase()))
+                .filter(|s| !s.is_empty())
+                .collect();
+
+            let score = self.match_score(task, &keywords);
+            if score > self.detection_threshold {
+                let matched = self.matched_keywords(task, &keywords);
                 matches.push(SkillMatch {
-                    skill: skill.clone(),
+                    name: skill.name.clone(),
+                    description: skill.description.clone(),
                     confidence: score,
-                    matched_keywords: self.matched_keywords(task, &skill.keywords),
+                    matched_keywords: matched,
                 });
             }
         }
 
-        // Sort by confidence descending
-        matches.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal));
-
-        Ok(matches)
+        matches.sort_by(|a, b| {
+            b.confidence
+                .partial_cmp(&a.confidence)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        matches
     }
 
-    /// Calculate match score between task and keywords
     fn match_score(&self, task: &str, keywords: &[String]) -> f64 {
-        let task_lower = task.to_lowercase();
-        let mut matches = 0;
-
-        for keyword in keywords {
-            if task_lower.contains(&keyword.to_lowercase()) {
-                matches += 1;
-            }
-        }
-
         if keywords.is_empty() {
-            0.0
-        } else {
-            matches as f64 / keywords.len() as f64
+            return 0.0;
         }
+        let task_lower = task.to_lowercase();
+        let hits = keywords
+            .iter()
+            .filter(|k| task_lower.contains(k.as_str()))
+            .count();
+        hits as f64 / keywords.len() as f64
     }
 
-    /// Get matched keywords
     fn matched_keywords(&self, task: &str, keywords: &[String]) -> Vec<String> {
         let task_lower = task.to_lowercase();
-        keywords.iter()
-            .filter(|k| task_lower.contains(&k.to_lowercase()))
+        keywords
+            .iter()
+            .filter(|k| task_lower.contains(k.as_str()))
             .cloned()
             .collect()
     }
@@ -63,7 +74,8 @@ impl SkillDetector {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SkillMatch {
-    pub skill: Skill,
+    pub name: String,
+    pub description: String,
     pub confidence: f64,
     pub matched_keywords: Vec<String>,
 }

@@ -1,9 +1,11 @@
 use crate::documentation::types::*;
 use anyhow::Result;
-use std::collections::LruCache;
+use lru::LruCache;
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use chrono::Utc;
+use serde::{Serialize, Deserialize};
 
 /// Content-addressed cache for documentation
 pub struct DocumentationCache {
@@ -13,7 +15,8 @@ pub struct DocumentationCache {
 
 impl DocumentationCache {
     pub fn new(config: CacheConfig) -> Self {
-        let cache = Arc::new(RwLock::new(LruCache::new(config.max_entries)));
+        let cap = NonZeroUsize::new(config.max_entries).unwrap_or(NonZeroUsize::new(100).unwrap());
+        let cache = Arc::new(RwLock::new(LruCache::new(cap)));
         Self { cache, config }
     }
 
@@ -32,9 +35,11 @@ impl DocumentationCache {
 
     /// Check if an entry exists and is valid
     pub async fn is_valid(&self, key: &str) -> bool {
-        let cache = self.cache.read().await;
+        let mut cache = self.cache.write().await;
         if let Some(entry) = cache.get(key) {
-            entry.expires_at > Utc::now()
+            let now = Utc::now();
+            let max_age = chrono::Duration::seconds(self.config.default_ttl_secs as i64);
+            entry.expires_at > now && (now - entry.created_at) < max_age
         } else {
             false
         }
@@ -57,7 +62,7 @@ impl DocumentationCache {
         let cache = self.cache.read().await;
         CacheStats {
             len: cache.len(),
-            max_capacity: cache.cap(),
+            max_capacity: cache.cap().get(),
         }
     }
 }

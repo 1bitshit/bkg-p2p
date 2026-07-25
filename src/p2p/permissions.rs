@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::identity::PeerId;
+use libp2p::PeerId;
 
 /// Permission for P2P operations
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]

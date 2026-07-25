@@ -1,5 +1,6 @@
 use crate::documentation::types::*;
 use chrono::Utc;
+use serde::{Serialize, Deserialize};
 
 /// Audit log for documentation operations
 pub struct DocumentationAudit {

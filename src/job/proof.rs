@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::identity::PeerId;
+use libp2p::PeerId;
 
 /// Proof of work or task completion
 #[derive(Debug, Clone, Serialize, Deserialize)]

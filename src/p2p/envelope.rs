@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::identity::PeerId;
+use libp2p::PeerId;
 
 /// Standardized P2P message envelope
 #[derive(Debug, Clone, Serialize, Deserialize)]

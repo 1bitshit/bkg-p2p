@@ -6,6 +6,7 @@
 pub mod bid;
 pub mod execution;
 pub mod network;
+pub mod proof;
 mod pricing;
 mod request;
 

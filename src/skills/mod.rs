@@ -13,6 +13,7 @@
 //! - Skills are content-addressed (BLAKE3 hash)
 //! - Trust is based on source: local > verified > network
 
+pub mod detector;
 pub mod parser;
 mod registry;
 mod selector;

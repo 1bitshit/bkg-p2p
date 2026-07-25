@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use crate::identity::PeerId;
+use libp2p::PeerId;
 
 /// File transfer request
 #[derive(Debug, Clone, Serialize, Deserialize)]

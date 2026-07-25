@@ -1,13 +1,17 @@
 use crate::documentation::types::*;
-use crate::documentation::{DocumentationProvider, LibraryResolver};
+use crate::documentation::audit::{AuditEntry, AuditOperation};
+use crate::documentation::{DocumentationAudit, DocumentationProvider, LibraryResolver};
 use anyhow::Result;
+use chrono::Utc;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 /// Documentation Agent Capability
 pub struct DocumentationAgent {
     resolver: LibraryResolver,
     cache: crate::documentation::cache::DocumentationCache,
     index: crate::documentation::index::DocumentationIndex,
-    audit: crate::documentation::audit::DocumentationAudit,
+    audit: Arc<Mutex<DocumentationAudit>>,
     config: DocumentationConfig,
 }
 
@@ -30,7 +34,7 @@ impl DocumentationAgent {
             resolver,
             cache,
             index,
-            audit: DocumentationAudit::new(),
+            audit: Arc::new(Mutex::new(DocumentationAudit::new())),
             config,
         }
     }
@@ -43,21 +47,29 @@ impl DocumentationAgent {
 
     /// Fetch documentation for a library
     pub async fn fetch_docs(&self, request: DocumentationRequest) -> Result<DocumentationResult> {
-        // Check cache first
+        let mut audit = self.audit.lock().await;
         let cache_key = format!("{}:{}", request.library_id.name, request.library_id.version.as_deref().unwrap_or("latest"));
 
         if self.cache.is_valid(&cache_key).await {
             if let Some(entry) = self.cache.get(&cache_key).await {
+                audit.log_access(AuditEntry {
+                    timestamp: Utc::now(),
+                    operation: AuditOperation::CacheHit,
+                    library_id: Some(request.library_id.clone()),
+                    provider: None,
+                    peer_id: None,
+                    success: true,
+                    error: None,
+                    metadata: std::collections::HashMap::new(),
+                });
                 return Ok(entry.content);
             }
         }
 
-        // Fetch from providers
         let mut last_error = None;
         for provider in &self.resolver.providers {
             match provider.fetch_docs(request.clone()).await {
                 Ok(result) => {
-                    // Cache the result
                     let entry = CacheEntry {
                         key: cache_key.clone(),
                         library_id: request.library_id.clone(),
@@ -69,9 +81,29 @@ impl DocumentationAgent {
                         content_hash: result.content_hash.clone(),
                     };
                     let _ = self.cache.put(entry).await;
+                    audit.log_access(AuditEntry {
+                        timestamp: Utc::now(),
+                        operation: AuditOperation::Fetch,
+                        library_id: Some(request.library_id.clone()),
+                        provider: Some(cache_key.clone()),
+                        peer_id: None,
+                        success: true,
+                        error: None,
+                        metadata: std::collections::HashMap::new(),
+                    });
                     return Ok(result);
                 }
                 Err(e) => {
+                    audit.log_access(AuditEntry {
+                        timestamp: Utc::now(),
+                        operation: AuditOperation::Fetch,
+                        library_id: Some(request.library_id.clone()),
+                        provider: None,
+                        peer_id: None,
+                        success: false,
+                        error: Some(e.to_string()),
+                        metadata: std::collections::HashMap::new(),
+                    });
                     last_error = Some(e);
                 }
             }

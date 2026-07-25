@@ -71,7 +71,8 @@ impl Telemetry {
 
         // Trim old events if over limit
         if events.len() > self.config.max_events {
-            events.drain(0..events.len() - self.config.max_events);
+            let drain_count = events.len() - self.config.max_events;
+            events.drain(..drain_count);
         }
     }
 
@@ -86,5 +87,21 @@ impl Telemetry {
     pub async fn clear(&self) {
         let mut events = self.events.write().await;
         events.clear();
+    }
+
+    /// Create a tracing span from a telemetry event for correlation
+    pub fn event_span(event: &TelemetryEvent) -> Span {
+        let span = tracing::info_span!(
+            "telemetry_event",
+            event_type = %event.event_type,
+            severity = %format!("{:?}", event.severity),
+        );
+        if let Some(ref trace_id) = event.trace_id {
+            span.record("trace_id", field::display(trace_id));
+        }
+        if let Some(ref span_id) = event.span_id {
+            span.record("span_id", field::display(span_id));
+        }
+        span
     }
 }

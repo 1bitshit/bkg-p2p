@@ -80,10 +80,14 @@ impl ReputationStore {
 
     /// Set local override for a peer
     pub async fn set_local_override(&self, peer_id: &str, score: Option<f64>) -> Result<()> {
-        let profiles = self.profiles.write().await;
-        if let Some(profile) = profiles.get(peer_id) {
-            // In a real implementation, we'd need mutable access
-            tracing::info!("Setting local override for {}: {:?}", peer_id, score);
+        let mut profiles = self.profiles.write().await;
+        if let Some(profile) = profiles.get_mut(peer_id) {
+            if self.config.local_override_allowed {
+                profile.local_override = score;
+                tracing::info!("Setting local override for {}: {:?}", peer_id, score);
+            } else {
+                tracing::warn!("Local overrides disabled in config, ignoring override for {}", peer_id);
+            }
         }
         Ok(())
     }
