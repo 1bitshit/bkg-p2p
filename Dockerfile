@@ -36,7 +36,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /bkg-peer
 
 # Copy binary
-COPY --from=builder /app/target/release/bkg-peer /usr/local/bin/bkg-peer
+COPY --from=builder /app/target/release/bkg-p2p /usr/local/bin/bkg-peer
 
 # Copy frontend dist
 COPY --from=frontend /app/web/dist /bkg-peer/web/dist
