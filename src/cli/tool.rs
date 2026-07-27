@@ -1,4 +1,4 @@
-//! `bkg-peer tool` commands - Tool management.
+//! `bkg-p2p tool` commands - Tool management.
 
 use clap::Subcommand;
 
@@ -156,7 +156,7 @@ pub async fn run(cmd: ToolCommand) -> anyhow::Result<()> {
                 }
             } else {
                 println!("Tool '{}' not found", name);
-                println!("Use 'bkg-peer tool list' to see available tools.");
+                println!("Use 'bkg-p2p tool list' to see available tools.");
             }
         }
 

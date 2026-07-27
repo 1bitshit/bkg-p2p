@@ -1,4 +1,4 @@
-//! `bkg-peer doctor` - Run diagnostics on all subsystems.
+//! `bkg-p2p doctor` - Run diagnostics on all subsystems.
 
 use std::time::Instant;
 
@@ -33,7 +33,7 @@ impl CheckResult {
 }
 
 pub async fn run() -> anyhow::Result<()> {
-    println!("bkg-peer Doctor");
+    println!("bkg-p2p Doctor");
     println!("{}", "=".repeat(60));
     println!("Running diagnostics on all subsystems...\n");
 
@@ -85,7 +85,7 @@ pub async fn run() -> anyhow::Result<()> {
     );
 
     if fail_count > 0 {
-        println!("\nSome checks failed. Run 'bkg-peer serve' to initialize missing components.");
+        println!("\nSome checks failed. Run 'bkg-p2p serve' to initialize missing components.");
     } else if warn_count > 0 {
         println!("\nAll critical checks passed with some warnings.");
     } else {
@@ -249,7 +249,7 @@ async fn check_inference() -> CheckResult {
     } else {
         (
             CheckStatus::Warn,
-            "No GGUF models found. Download with: bkg-peer models download <model>".to_string(),
+            "No GGUF models found. Download with: bkg-p2p models download <model>".to_string(),
         )
     };
 
@@ -383,7 +383,7 @@ async fn check_web_server() -> CheckResult {
         _ => CheckResult {
             name: "Web Server",
             status: CheckStatus::Skip,
-            detail: "Not running. Start with: bkg-peer serve --web :8080".to_string(),
+            detail: "Not running. Start with: bkg-p2p serve --web :8080".to_string(),
             duration_ms: start.elapsed().as_millis(),
         },
     }

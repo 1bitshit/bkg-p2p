@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 /// GossipSub topic for tool manifests.
-pub const TOOL_MANIFEST_TOPIC: &str = "bkg-peer/tools/v1";
+pub const TOOL_MANIFEST_TOPIC: &str = "bkg-p2p/tools/v1";
 
 /// A tool that a peer advertises for remote execution.
 #[derive(Debug, Clone, Serialize, Deserialize)]

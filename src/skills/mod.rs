@@ -31,7 +31,7 @@ use serde::{Deserialize, Serialize};
 pub const MAX_SKILL_SIZE: u64 = 64 * 1024;
 
 /// GossipSub topic for skill announcements across the P2P network.
-pub const SKILLS_TOPIC: &str = "bkg-peer/skills/v1";
+pub const SKILLS_TOPIC: &str = "bkg-p2p/skills/v1";
 
 /// Regex for validating skill names.
 static SKILL_NAME_PATTERN: std::sync::LazyLock<Regex> =

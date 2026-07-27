@@ -25,7 +25,7 @@ pub struct AgentSkill {
 /// Agent Card document served at `/.well-known/agent-card.json`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentCard {
-    /// Protocol version marker for bkg-peer nodes.
+    /// Protocol version marker for bkg-p2p nodes.
     #[serde(rename = "protocolVersion")]
     pub protocol_version: String,
     pub name: String,
@@ -60,12 +60,12 @@ impl AgentCard {
             url: base_url.clone(),
             skills: vec![
                 AgentSkill {
-                    id: "bkg-peer.inference".to_string(),
+                    id: "bkg-p2p.inference".to_string(),
                     name: "Local inference".to_string(),
                     description: "Execute inference via node executor".to_string(),
                 },
                 AgentSkill {
-                    id: "bkg-peer.tasks".to_string(),
+                    id: "bkg-p2p.tasks".to_string(),
                     name: "A2A tasks".to_string(),
                     description: "Create and query A2A task lifecycle".to_string(),
                 },

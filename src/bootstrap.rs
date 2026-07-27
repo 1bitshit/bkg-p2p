@@ -2,20 +2,20 @@
 
 use std::path::PathBuf;
 
-/// Get the base directory for bkg-peer data.
+/// Get the base directory for bkg-p2p data.
 ///
 /// Priority:
-/// 1. `BKG_PEERD_HOME` environment variable
-/// 2. `~/.bkg-peer` on Unix systems
-/// 3. `%APPDATA%\bkg-peer` on Windows
+/// 1. `BKG_P2P_HOME` environment variable
+/// 2. `~/.bkg-p2p` on Unix systems
+/// 3. `%APPDATA%\bkg-p2p` on Windows
 pub fn base_dir() -> PathBuf {
-    if let Ok(home) = std::env::var("BKG_PEERD_HOME") {
+    if let Ok(home) = std::env::var("BKG_P2P_HOME") {
         return PathBuf::from(home);
     }
 
     dirs::home_dir()
-        .map(|h| h.join(".bkg-peer"))
-        .unwrap_or_else(|| PathBuf::from(".bkg-peer"))
+        .map(|h| h.join(".bkg-p2p"))
+        .unwrap_or_else(|| PathBuf::from(".bkg-p2p"))
 }
 
 /// Get the directory for WASM tools.
@@ -45,7 +45,7 @@ pub fn identity_path() -> PathBuf {
 
 /// Get the path to the database file.
 pub fn database_path() -> PathBuf {
-    data_dir().join("bkg-peer.redb")
+    data_dir().join("bkg-p2p.redb")
 }
 
 /// Get the path to the config file.
@@ -53,7 +53,7 @@ pub fn config_path() -> PathBuf {
     base_dir().join("config.toml")
 }
 
-/// Load environment variables from `.bkg-peer/.env` if present.
+/// Load environment variables from `.bkg-p2p/.env` if present.
 pub fn load_env() {
     let env_path = base_dir().join(".env");
     if env_path.exists() {
@@ -74,6 +74,65 @@ pub fn ensure_dirs() -> std::io::Result<()> {
     Ok(())
 }
 
+/// Migrate from old `~/.bkg-peer` directory to `~/.bkg-p2p`.
+///
+/// This function is idempotent - safe to call multiple times.
+/// It does NOT delete the old directory; it only copies data forward.
+pub fn migrate_from_legacy() -> std::io::Result<()> {
+    let legacy_dir = dirs::home_dir()
+        .map(|h| h.join(".bkg-peer"))
+        .unwrap_or_else(|| PathBuf::from(".bkg-peer"));
+
+    let new_dir = base_dir();
+
+    // Skip if new directory already has content
+    if new_dir.exists() && new_dir.join("config.toml").exists() {
+        return Ok(());
+    }
+
+    // Skip if legacy directory doesn't exist
+    if !legacy_dir.exists() {
+        return Ok(());
+    }
+
+    tracing::info!("Migrating data from {} to {}", legacy_dir.display(), new_dir.display());
+
+    std::fs::create_dir_all(&new_dir)?;
+
+    // Copy directory contents recursively
+    for entry in std::fs::read_dir(&legacy_dir)? {
+        let entry = entry?;
+        let src = entry.path();
+        let dst = new_dir.join(entry.file_name());
+
+        if src.is_dir() {
+            std::fs::create_dir_all(&dst)?;
+            copy_dir_recursive(&src, &dst)?;
+        } else {
+            std::fs::copy(&src, &dst)?;
+        }
+    }
+
+    tracing::info!("Migration complete. Old data preserved at {}", legacy_dir.display());
+    Ok(())
+}
+
+fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+
+        if src_path.is_dir() {
+            std::fs::create_dir_all(&dst_path)?;
+            copy_dir_recursive(&src_path, &dst_path)?;
+        } else {
+            std::fs::copy(&src_path, &dst_path)?;
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -81,7 +140,7 @@ mod tests {
     #[test]
     fn test_base_dir_exists() {
         let dir = base_dir();
-        assert!(dir.ends_with(".bkg-peer"));
+        assert!(dir.ends_with(".bkg-p2p"));
     }
 
     #[test]

@@ -1,4 +1,4 @@
-//! `bkg-peer serve` command - Start a peer node with full distributed execution.
+//! `bkg-p2p serve` command - Start a peer node with full distributed execution.
 
 use clap::Args;
 use futures::FutureExt;
@@ -92,13 +92,13 @@ pub struct ServeArgs {
     #[arg(long, visible_alias = "verbose", short = 'V')]
     pub verbose_agentic: bool,
 
-    /// Claim distributed crew task offers on `bkg-peer/crew/v1` and publish signed results.
+    /// Claim distributed crew task offers on `bkg-p2p/crew/v1` and publish signed results.
     #[arg(long)]
     pub crew_worker: bool,
 }
 
 pub async fn run(args: ServeArgs) -> anyhow::Result<()> {
-    tracing::info!("Starting bkg-peer node...");
+    tracing::info!("Starting bkg-p2p node...");
 
     // Ensure directories exist
     bootstrap::ensure_dirs()?;
@@ -161,13 +161,13 @@ pub async fn run(args: ServeArgs) -> anyhow::Result<()> {
 
     if args.crew_worker {
         config.orchestration.crew_worker = true;
-        tracing::info!("Crew P2P worker enabled (bkg-peer/crew/v1)");
+        tracing::info!("Crew P2P worker enabled (bkg-p2p/crew/v1)");
     }
 
-    // Open database (redb: single process per file — stop other `bkg-peer serve` if lock fails)
+    // Open database (redb: single process per file — stop other `bkg-p2p serve` if lock fails)
     let database = Database::open(&config.database.path).map_err(|e| {
         anyhow::anyhow!(
-            "{e}\n\nHint: only one node can use {:?} at a time. Stop other `bkg-peer` processes (e.g. `pgrep -fl bkg-peer`) or use a different data directory via config.",
+            "{e}\n\nHint: only one node can use {:?} at a time. Stop other `bkg-p2p` processes (e.g. `pgrep -fl bkg-p2p`) or use a different data directory via config.",
             config.database.path
         )
     })?;
@@ -433,7 +433,7 @@ verbose_agentic_io: args.verbose_agentic,
     let verbose_llm_io = args.verbose_agentic;
     if verbose_llm_io {
         tracing::info!(
-            "Verbose agentic I/O enabled: LLM prompts/responses and tool args/results (large payloads truncated on stderr) — bkg-peer serve --verbose-agentic"
+            "Verbose agentic I/O enabled: LLM prompts/responses and tool args/results (large payloads truncated on stderr) — bkg-p2p serve --verbose-agentic"
         );
     }
 

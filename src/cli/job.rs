@@ -1,4 +1,4 @@
-//! `bkg-peer job` command - Submit and manage distributed jobs.
+//! `bkg-p2p job` command - Submit and manage distributed jobs.
 
 use clap::{Args, Subcommand};
 use std::sync::Arc;

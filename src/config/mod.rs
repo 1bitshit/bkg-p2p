@@ -14,7 +14,7 @@ use crate::bootstrap;
 /// when no configuration is available.
 pub const DEFAULT_MODEL_NAME: &str = "llama-3.2-3b";
 
-/// Root configuration for bkg-peer.
+/// Root configuration for bkg-p2p.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
@@ -49,7 +49,7 @@ pub struct Config {
     #[serde(default)]
     pub provider_sharing: ProviderSharingConfig,
 
-    /// Local skills directory (`SKILL.md` files). Default: `~/.bkg-peer/skills`.
+    /// Local skills directory (`SKILL.md` files). Default: `~/.bkg-p2p/skills`.
     #[serde(default)]
     pub skills: SkillsConfig,
 
@@ -91,7 +91,7 @@ pub struct CompactionConfig {
 /// Crew task market worker and related flags.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct OrchestrationConfig {
-    /// When true, this node may claim `bkg-peer/crew/v1` offers and return signed results.
+    /// When true, this node may claim `bkg-p2p/crew/v1` offers and return signed results.
     #[serde(default)]
     pub crew_worker: bool,
 }
@@ -99,7 +99,7 @@ pub struct OrchestrationConfig {
 /// Skills directory and discovery options.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct SkillsConfig {
-    /// If set, load skills from this directory instead of `~/.bkg-peer/skills`.
+    /// If set, load skills from this directory instead of `~/.bkg-p2p/skills`.
     #[serde(default)]
     pub directory: Option<PathBuf>,
 }
@@ -132,21 +132,21 @@ impl Config {
 
     /// Apply environment variable overrides.
     fn apply_env_overrides(&mut self) {
-        if let Ok(val) = std::env::var("BKG_PEERD_WEB_ENABLED") {
+        if let Ok(val) = std::env::var("BKG_P2P_WEB_ENABLED") {
             self.web.enabled = val.parse().unwrap_or(self.web.enabled);
         }
 
-        if let Ok(val) = std::env::var("BKG_PEERD_WEB_ADDR") {
+        if let Ok(val) = std::env::var("BKG_P2P_WEB_ADDR") {
             if let Ok(addr) = val.parse() {
                 self.web.listen_addr = addr;
             }
         }
 
-        if let Ok(val) = std::env::var("BKG_PEERD_BOOTSTRAP") {
+        if let Ok(val) = std::env::var("BKG_P2P_BOOTSTRAP") {
             self.p2p.bootstrap_peers = val.split(',').map(String::from).collect();
         }
 
-        if let Ok(val) = std::env::var("BKG_PEER_PROMPTS_DIR") {
+        if let Ok(val) = std::env::var("BKG_P2P_PROMPTS_DIR") {
             let p = PathBuf::from(val.trim());
             if !p.as_os_str().is_empty() {
                 self.prompts.directory = Some(p);

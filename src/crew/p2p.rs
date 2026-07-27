@@ -6,14 +6,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::identity::NodeIdentity;
 
-pub const CREW_TASK_TOPIC: &str = "bkg-peer/crew/v1";
-pub const POD_TOPIC: &str = "bkg-peer/pod/v1";
+pub const CREW_TASK_TOPIC: &str = "bkg-p2p/crew/v1";
+pub const POD_TOPIC: &str = "bkg-p2p/pod/v1";
 
 const IDENTITY_MULTIHASH_CODE: u64 = 0;
 
 /// Build campaign world topic for sharded fan-in.
 pub fn world_topic(campaign_id: &str) -> String {
-    format!("bkg-peer/world/{campaign_id}/v1")
+    format!("bkg-p2p/world/{campaign_id}/v1")
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

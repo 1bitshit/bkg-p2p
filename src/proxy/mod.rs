@@ -30,6 +30,7 @@ use thiserror::Error;
 use tokio::sync::RwLock;
 
 use crate::channel::ChannelManager;
+use crate::proxy::payment::PaymentVerifier;
 use crate::wallet::{from_micro, to_micro, Wallet};
 
 #[derive(Error, Debug)]
@@ -101,11 +102,13 @@ pub struct ProxyConfig {
     pub free_tier_enabled: bool,
     /// Free tier requests per hour
     pub free_tier_requests_per_hour: u32,
+    /// Upstream URL to forward requests to (empty = no forwarding)
+    pub upstream_url: String,
 }
 
 impl Default for ProxyConfig {
     fn default() -> Self {
-        Self {
+Self {
             listen_addr: "127.0.0.1:8402".parse().unwrap(),
             base_price_per_request: to_micro(0.01), // 0.01 BKG per request
             enable_channels: true,
@@ -113,6 +116,7 @@ impl Default for ProxyConfig {
             rate_limit_per_minute: 100,
             free_tier_enabled: true,
             free_tier_requests_per_hour: 10,
+            upstream_url: String::new(),
         }
     }
 }
@@ -131,6 +135,8 @@ pub struct ProxyState {
     pub free_tier_usage: RwLock<HashMap<String, (u64, u32)>>,
     /// Rate limit tracking: client_id -> (minute_timestamp, count)
     pub rate_limits: RwLock<HashMap<String, (u64, u32)>>,
+    /// Payment verifier for cryptographic proof checks
+    pub payment_verifier: PaymentVerifier,
 }
 
 impl ProxyState {
@@ -147,6 +153,7 @@ impl ProxyState {
             config,
             free_tier_usage: RwLock::new(HashMap::new()),
             rate_limits: RwLock::new(HashMap::new()),
+            payment_verifier: PaymentVerifier::new(),
         }
     }
 
@@ -304,8 +311,39 @@ impl Proxy {
 
         let paid = match payment_proof {
             Some(proof) => {
-                // Verify payment proof
-                proof.verify(price).map_err(ProxyError::InvalidPayment)?
+                // Verify payment proof using real cryptographic checks
+                match &proof.method {
+                    PaymentMethod::Direct {
+                        proof_id,
+                        amount,
+                        signature,
+                    } => {
+                        state
+                            .payment_verifier
+                            .verify_direct(proof_id, *amount, signature, price)
+                            .await
+                            .unwrap_or(false)
+                    }
+                    PaymentMethod::Channel {
+                        channel_id,
+                        nonce,
+                        amount,
+                        signature,
+                    } => {
+                        state
+                            .payment_verifier
+                            .verify_channel(channel_id, *nonce, *amount, signature, price)
+                            .await
+                            .unwrap_or(false)
+                    }
+                    PaymentMethod::Prepaid { api_key, .. } => {
+                        state
+                            .payment_verifier
+                            .verify_prepaid(api_key, price)
+                            .await
+                            .unwrap_or(false)
+                    }
+                }
             }
             None => {
                 // No payment provided, check free tier
@@ -331,16 +369,62 @@ impl Proxy {
         // Record request for rate limiting
         state.record_request(&client_id).await;
 
-        // TODO: Forward request to upstream and return response
-        // For now, return a placeholder response
-        Ok((
-            StatusCode::OK,
-            [(
-                "X-Payment-Received",
-                format!("{:.6} BKG", from_micro(price)),
-            )],
-            "Request processed (upstream forwarding not yet implemented)",
-        ))
+// Forward request to upstream and return response
+    if state.config.upstream_url.is_empty() {
+        return Err(ProxyError::UpstreamError(
+            "No upstream URL configured".into(),
+        ));
+    }
+    let client = reqwest::Client::new();
+    let upstream_url = format!("{}{}", state.config.upstream_url, path);
+
+    let mut req_builder = client.request(
+        request.method().clone(),
+        &upstream_url,
+    );
+
+    // Copy headers (excluding hop-by-hop headers)
+    for (key, value) in headers.iter() {
+        if !is_hop_by_hop(key) {
+            if let Ok(v) = value.to_str() {
+                req_builder = req_builder.header(key.as_str(), v);
+            }
+        }
+    }
+
+    // Copy body
+    let body_bytes = axum::body::to_bytes(request.into_body(), usize::MAX)
+        .await
+        .map_err(|e| ProxyError::UpstreamError(format!("Failed to read request body: {}", e)))?;
+    req_builder = req_builder.body(body_bytes);
+
+    // Send request
+    let response = client
+        .execute(req_builder.build().map_err(|e| ProxyError::UpstreamError(e.to_string()))?)
+        .await
+        .map_err(|e| ProxyError::UpstreamError(e.to_string()))?;
+
+    let status = response.status();
+    let mut response_builder = axum::response::Response::builder().status(status);
+
+    // Copy response headers
+    for (key, value) in response.headers().iter() {
+        if !is_hop_by_hop(key) {
+            if let Ok(v) = value.to_str() {
+                response_builder = response_builder.header(key.as_str(), v);
+            }
+        }
+    }
+
+    let body = response
+        .bytes()
+        .await
+        .map_err(|e| ProxyError::UpstreamError(e.to_string()))?;
+
+    Ok((
+        response_builder.body(axum::body::Body::from(body))
+            .map_err(|e| ProxyError::UpstreamError(e.to_string()))?,
+    ))
     }
 
     /// Run the proxy server.
@@ -354,6 +438,54 @@ impl Proxy {
 
         Ok(())
     }
+}
+
+/// Check if an HTTP header is hop-by-hop and should not be forwarded.
+fn is_hop_by_hop(key: &axum::http::HeaderName) -> bool {
+    use axum::http::header;
+    matches!(
+        *key,
+        header::CONNECTION
+            | header::KEEP_ALIVE
+            | header::PROXY_AUTHENTICATE
+            | header::PROXY_AUTHORIZATION
+            | header::TE
+            | header::TRAILER
+            | header::TRANSFER_ENCODING
+            | header::UPGRADE
+    )
+}
+
+/// Check if an HTTP header is hop-by-hop and should not be forwarded.
+fn is_hop_by_hop(key: &axum::http::HeaderName) -> bool {
+    use axum::http::header;
+    matches!(
+        *key,
+        header::CONNECTION
+            | header::KEEP_ALIVE
+            | header::PROXY_AUTHENTICATE
+            | header::PROXY_AUTHORIZATION
+            | header::TE
+            | header::TRAILER
+            | header::TRANSFER_ENCODING
+            | header::UPGRADE
+    )
+}
+
+/// Check if an HTTP header is hop-by-hop and should not be forwarded.
+fn is_hop_by_hop(key: &axum::http::HeaderName) -> bool {
+    use axum::http::header;
+    matches!(
+        *key,
+        header::CONNECTION
+            | header::KEEP_ALIVE
+            | header::PROXY_AUTHENTICATE
+            | header::PROXY_AUTHORIZATION
+            | header::TE
+            | header::TRAILER
+            | header::TRANSFER_ENCODING
+            | header::UPGRADE
+    )
 }
 
 #[cfg(test)]

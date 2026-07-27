@@ -2,7 +2,7 @@
 //!
 //! Every entry is a flow graph (`FlowSpec`).  Built-in entries include example flows
 //! and minimal single-agent wrappers for the `templates/agents/*.toml` presets.
-//! Full TOML agent behavior remains `bkg-peer serve --agent <path>`.
+//! Full TOML agent behavior remains `bkg-p2p serve --agent <path>`.
 
 use serde::{Deserialize, Serialize};
 use std::path::Path;

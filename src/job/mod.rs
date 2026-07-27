@@ -16,8 +16,10 @@ pub use network::{topics as job_topics, JobMessage};
 pub use pricing::{PricingStrategy, ResourcePricing, ResourceType, StorageOperation};
 pub use request::{JobId, JobRequest, JobRequirements};
 
+use crate::executor::ResourceMonitor;
 use crate::wallet::{Wallet, WalletError};
 use chrono::Utc;
+use sysinfo::System;
 use tracing;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -85,6 +87,8 @@ pub struct JobManager {
     /// Optional channel for broadcasting job messages over GossipSub.
     /// Set via `set_broadcast_tx` after the P2P network is initialised.
     broadcast_tx: RwLock<Option<JobBroadcastTx>>,
+    /// Local resource monitor for checking capacity before bidding.
+    resource_monitor: Option<ResourceMonitor>,
 }
 
 impl JobManager {
@@ -99,7 +103,15 @@ impl JobManager {
             pricing: RwLock::new(PricingStrategy::default()),
             wallet,
             broadcast_tx: RwLock::new(None),
+            resource_monitor: None,
         }
+    }
+
+    /// Attach a resource monitor so the job manager can check local
+    /// capacity before bidding on requests.
+    pub fn with_resource_monitor(mut self, monitor: ResourceMonitor) -> Self {
+        self.resource_monitor = Some(monitor);
+        self
     }
 
     /// Attach a broadcast channel so the job manager can publish messages
@@ -306,8 +318,15 @@ impl JobManager {
     pub async fn evaluate_request(&self, request: &JobRequest) -> Option<JobBid> {
         let pricing = self.pricing.read().await;
 
-        // Check if we can fulfill the requirements
-        // TODO: Check actual local resources
+        // Check if we can fulfill the requirements based on actual local resources
+        if !self.can_fulfill(request).await {
+            tracing::debug!(
+                job_id = %request.id,
+                resource_type = %request.resource_type,
+                "Insufficient local resources, skipping bid"
+            );
+            return None;
+        }
 
         // Calculate our price
         let price = pricing.calculate_price(&request.resource_type, request.units);
@@ -325,6 +344,86 @@ impl JobManager {
             pricing.estimated_latency_ms,
             60, // Bid valid for 60 seconds
         ))
+    }
+
+    /// Check whether this node has sufficient local resources to fulfill
+    /// the given request.
+    async fn can_fulfill(&self, request: &JobRequest) -> bool {
+        // If no resource monitor is attached, fall back to always bidding
+        // (conservative: don't block the marketplace when we can't measure)
+        let Some(ref monitor) = self.resource_monitor else {
+            return true;
+        };
+
+        let state = monitor.current_state().await;
+
+        match &request.resource_type {
+            ResourceType::Inference { model, .. } => {
+                // Check RAM: inference needs at least 2 GB base + tokens * factor
+                let min_ram_mb = 2048 + (request.units as u32 * 2);
+                if state.ram_available_mb < min_ram_mb {
+                    return false;
+                }
+                // Check VRAM if GPU is required
+                if let Some(vram_mb) = state.vram_available_mb {
+                    if vram_mb < 4000 {
+                        return false;
+                    }
+                }
+                // Check active task count
+                if state.active_inference_tasks >= 4 {
+                    return false;
+                }
+                // Check model availability (best-effort)
+                if !state.has_model(model) {
+                    tracing::debug!(model = %model, "Model not loaded locally");
+                }
+                true
+            }
+            ResourceType::Gpu { duration_secs, .. } => {
+                // GPU tasks need VRAM and low GPU usage
+                match state.vram_available_mb {
+                    Some(vram) if vram >= 4000 => {}
+                    _ => return false,
+                }
+                match state.gpu_usage {
+                    Some(usage) if usage < 0.9 => {}
+                    None => {} // No GPU detected, can't bid on GPU tasks
+                    _ => return false,
+                }
+                state.active_inference_tasks < 4
+            }
+            ResourceType::Cpu { cores, .. } => {
+                let required_cores = *cores as f64;
+                let available_cores = (1.0 - state.cpu_usage) * sysinfo::System::new_all()
+                    .cpus()
+                    .len() as f64;
+                available_cores >= required_cores && state.ram_available_mb >= 1024
+            }
+            ResourceType::Storage { bytes, .. } => {
+                // Check available disk space (best-effort via RAM proxy for now;
+                // a real implementation would check actual disk free space)
+                let needed_mb = (*bytes / 1024 / 1024).max(1) as u32;
+                state.ram_available_mb > 0 // Storage is not RAM-limited in this check
+            }
+            ResourceType::Embedding { tokens, .. }
+            | ResourceType::ImageGeneration { count: tokens, .. } => {
+                let min_ram = 1024 + (*tokens as u32);
+                state.ram_available_mb >= min_ram && state.active_inference_tasks < 4
+            }
+            ResourceType::WebFetch { url_count } => {
+                let min_ram = 256 + (*url_count as u32 * 10);
+                state.ram_available_mb >= min_ram && state.active_web_tasks < 10
+            }
+            ResourceType::VectorSearch { query_count } => {
+                let min_ram = 512 + (*query_count as u32 * 5);
+                state.ram_available_mb >= min_ram
+            }
+            ResourceType::WasmTool { invocations, .. } => {
+                let min_ram = 128 + (*invocations as u32 * 16);
+                state.ram_available_mb >= min_ram && state.active_wasm_tasks < 10
+            }
+        }
     }
 
     /// Submit a bid for a job request.

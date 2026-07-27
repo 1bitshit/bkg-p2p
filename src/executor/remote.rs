@@ -278,11 +278,12 @@ impl RemoteExecutor {
                     finish_reason: super::task::FinishReason::Stop,
                 })
             }
-            ExecutionTask::WebFetch(_) => TaskData::WebFetch(super::task::WebFetchResult {
-                status: 200,
-                headers: vec![],
-                body: result.data.clone(),
-            }),
+ExecutionTask::WebFetch(_) => TaskData::WebFetch(super::task::WebFetchResult {
+                 status: 200,
+                 headers: vec![],
+                 body: result.data.clone(),
+                 ttfb_ms: 0,
+             }),
             ExecutionTask::WebSearch(_) => {
                 TaskData::WebSearch(super::task::WebSearchResult { results: vec![] })
             }

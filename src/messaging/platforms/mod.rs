@@ -109,17 +109,17 @@ pub fn create_channel(config: ChannelConfig) -> Result<Box<dyn Channel>, Channel
         }
         Platform::Discord => Err(ChannelError::PlatformError(
             "Discord channel requires the ironclaw adapter (ironclaw/channels-src/discord). \
-             Install it with `bkg-peer skill install ironclaw-discord` or use a webhook channel instead."
+             Install it with `bkg-p2p skill install ironclaw-discord` or use a webhook channel instead."
                 .into(),
         )),
         Platform::Slack => Err(ChannelError::PlatformError(
             "Slack channel requires the ironclaw adapter (ironclaw/channels-src/slack). \
-             Install it with `bkg-peer skill install ironclaw-slack` or use a webhook channel instead."
+             Install it with `bkg-p2p skill install ironclaw-slack` or use a webhook channel instead."
                 .into(),
         )),
         Platform::Matrix => Err(ChannelError::PlatformError(
             "Matrix channel requires the ironclaw adapter (ironclaw/channels-src/matrix). \
-             Install it with `bkg-peer skill install ironclaw-matrix` or use a webhook channel instead."
+             Install it with `bkg-p2p skill install ironclaw-matrix` or use a webhook channel instead."
                 .into(),
         )),
         Platform::WebSocket => {

@@ -33,7 +33,7 @@ impl Default for WorkspaceConfig {
     fn default() -> Self {
         let root = dirs::data_dir()
             .unwrap_or_else(|| PathBuf::from("."))
-            .join("bkg-peer")
+            .join("bkg-p2p")
             .join("workspace");
 
         Self {
@@ -400,7 +400,7 @@ impl FileTree {
 // Default file contents
 const DEFAULT_README: &str = r#"# Workspace
 
-This is your bkg-peer workspace for persistent memory and context.
+This is your bkg-p2p workspace for persistent memory and context.
 
 ## Structure
 
@@ -419,7 +419,7 @@ Use memory tools to read, write, and search workspace files.
 
 const DEFAULT_IDENTITY: &str = r#"# Identity
 
-name: bkg-peer
+name: bkg-p2p
 nature: Helpful AI assistant
 vibe: Professional yet friendly
 

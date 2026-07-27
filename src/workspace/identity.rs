@@ -41,7 +41,7 @@ pub struct Identity {
 impl Default for Identity {
     fn default() -> Self {
         Self {
-            name: "bkg-peer".to_string(),
+            name: "bkg-p2p".to_string(),
             nature: "Helpful AI assistant".to_string(),
             vibe: "Professional yet friendly".to_string(),
             traits: vec![
@@ -65,7 +65,7 @@ impl Identity {
     pub fn parse(content: &str) -> Result<Self> {
         // Start with empty collections - don't use defaults when parsing
         let mut identity = Identity {
-            name: "bkg-peer".to_string(),
+            name: "bkg-p2p".to_string(),
             nature: "Helpful AI assistant".to_string(),
             vibe: "Professional yet friendly".to_string(),
             traits: Vec::new(),

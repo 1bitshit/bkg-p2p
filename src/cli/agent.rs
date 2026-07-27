@@ -1,4 +1,4 @@
-//! `bkg-peer agent` commands - Agent management.
+//! `bkg-p2p agent` commands - Agent management.
 
 use clap::Subcommand;
 use std::path::PathBuf;
@@ -114,12 +114,12 @@ async fn run_agent(spec_path: PathBuf) -> anyhow::Result<()> {
     }
 
     println!("Agent {} deployed with ID: {}", agent_name, agent_id);
-    println!("\nTo check status: bkg-peer agent info {}", agent_id);
-    println!("To stop:         bkg-peer agent stop {}", agent_id);
+    println!("\nTo check status: bkg-p2p agent info {}", agent_id);
+    println!("To stop:         bkg-p2p agent stop {}", agent_id);
 
     // In a full implementation this would start the agent loop.
     // For now, we register and exit - the node's event loop handles execution.
-    println!("\nNote: Agent is registered. Start the node with 'bkg-peer serve' to activate.");
+    println!("\nNote: Agent is registered. Start the node with 'bkg-p2p serve' to activate.");
 
     Ok(())
 }
@@ -128,7 +128,7 @@ async fn list_agents() -> anyhow::Result<()> {
     let db_path = bootstrap::database_path();
     if !db_path.exists() {
         println!("No agents registered (database not initialized)");
-        println!("Run 'bkg-peer serve' first to initialize.");
+        println!("Run 'bkg-p2p serve' first to initialize.");
         return Ok(());
     }
 
@@ -137,7 +137,7 @@ async fn list_agents() -> anyhow::Result<()> {
 
     if agent_ids.is_empty() {
         println!("No agents registered");
-        println!("\nDeploy an agent: bkg-peer agent run <spec.toml>");
+        println!("\nDeploy an agent: bkg-p2p agent run <spec.toml>");
         return Ok(());
     }
 
@@ -167,7 +167,7 @@ async fn list_agents() -> anyhow::Result<()> {
 async fn stream_logs(agent_id: &str, follow: bool) -> anyhow::Result<()> {
     let db_path = bootstrap::database_path();
     if !db_path.exists() {
-        anyhow::bail!("Database not initialized. Run 'bkg-peer serve' first.");
+        anyhow::bail!("Database not initialized. Run 'bkg-p2p serve' first.");
     }
 
     let db = Database::open(&db_path)?;

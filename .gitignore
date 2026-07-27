@@ -19,8 +19,18 @@
 .env.local
 .env.*.local
 
-# bkg-peer data directory (local development)
-.bkg-peer/
+# bkg-p2p data directory (local development)
+.bkg-p2p/
+
+# Temporary files
+temp/
+nul
+services.txt
+build.log
+build.err
+
+# Session files
+session-ses_*.md
 
 # Test artifacts
 *.log
@@ -35,7 +45,6 @@ coverage/
 *~
 \#*\#
 .\#*
-session-ses_074f.md
 # Profiling
 perf.data
 perf.data.old
@@ -49,3 +58,6 @@ web/node_modules/
 web/dist/
 
 .cursor/
+
+# Deepwork state (git-local)
+.slim/deepwork/

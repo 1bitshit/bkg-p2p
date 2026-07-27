@@ -1,4 +1,4 @@
-//! `bkg-peer network` commands - Network operations.
+//! `bkg-p2p network` commands - Network operations.
 
 use clap::Subcommand;
 
@@ -114,7 +114,7 @@ async fn show_status() -> anyhow::Result<()> {
         }
         _ => {
             println!("\nNode Status: Offline");
-            println!("  Start with: bkg-peer serve");
+            println!("  Start with: bkg-p2p serve");
         }
     }
 
@@ -125,7 +125,7 @@ async fn list_peers() -> anyhow::Result<()> {
     let db_path = bootstrap::database_path();
     if !db_path.exists() {
         println!("No peers known (database not initialized)");
-        println!("Run 'bkg-peer serve' to start discovering peers.");
+        println!("Run 'bkg-p2p serve' to start discovering peers.");
         return Ok(());
     }
 
@@ -183,11 +183,11 @@ async fn trigger_discover() -> anyhow::Result<()> {
             println!("  - mDNS (LAN peers)");
             println!("  - Kademlia DHT (internet peers)");
             println!("  - GossipSub (peer exchange)");
-            println!("\nCheck discovered peers: bkg-peer network peers");
+            println!("\nCheck discovered peers: bkg-p2p network peers");
         }
         _ => {
             println!("Node is not running.");
-            println!("Start the node first: bkg-peer serve");
+            println!("Start the node first: bkg-p2p serve");
             println!("Peer discovery runs automatically when the node is active.");
         }
     }
@@ -199,7 +199,7 @@ async fn show_identity() -> anyhow::Result<()> {
     let identity_path = bootstrap::identity_path();
 
     if !identity_path.exists() {
-        println!("No identity found. Run 'bkg-peer serve' to generate one.");
+        println!("No identity found. Run 'bkg-p2p serve' to generate one.");
         return Ok(());
     }
 
@@ -221,7 +221,7 @@ async fn show_identity() -> anyhow::Result<()> {
 async fn show_multiaddrs() -> anyhow::Result<()> {
     let identity_path = bootstrap::identity_path();
     if !identity_path.exists() {
-        println!("No identity found. Run 'bkg-peer serve' first.");
+        println!("No identity found. Run 'bkg-p2p serve' first.");
         return Ok(());
     }
     let identity = NodeIdentity::load(&identity_path)?;
@@ -262,7 +262,7 @@ async fn show_multiaddrs() -> anyhow::Result<()> {
                         }
                         println!("\nPeer ID: {}", peer_id);
                         println!("\nConnect from another node:");
-                        println!("  bkg-peer peers join <multiaddr>");
+                        println!("  bkg-p2p peers join <multiaddr>");
                         return Ok(());
                     }
                 }
@@ -283,7 +283,7 @@ async fn show_multiaddrs() -> anyhow::Result<()> {
     println!("\nPeer ID: {}", peer_id);
     if config.p2p.listen_addresses.iter().any(|a| a.contains("/tcp/0")) {
         println!("\nNote: Port 0 = dynamic. Start the node first for actual port numbers,");
-        println!("      then run 'bkg-peer network multiaddrs' again.");
+        println!("      then run 'bkg-p2p network multiaddrs' again.");
     }
 
     Ok(())

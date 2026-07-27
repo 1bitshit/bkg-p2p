@@ -9,7 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 
 /// Gossip topic for signed resource manifests (capability fan-out).
-pub const RESOURCES_GOSSIP_TOPIC: &str = "bkg-peer/resources/v1";
+pub const RESOURCES_GOSSIP_TOPIC: &str = "bkg-p2p/resources/v1";
 
 use crate::a2a::gossip::A2A_GOSSIP_TOPIC;
 use crate::a2a::state::A2aState;
@@ -740,7 +740,7 @@ Ok(Self {
                     );
                 }
             }
-            t if t.starts_with("bkg-peer/world/") && t.ends_with("/v1") => {
+            t if t.starts_with("bkg-p2p/world/") && t.ends_with("/v1") => {
                 if let Ok(ms) = serde_json::from_slice::<crate::crew::CampaignMilestone>(&data) {
                     tracing::debug!(
                         campaign = %ms.campaign_id,

@@ -1,7 +1,16 @@
 //! Payment verification for HTTP 402 proxy.
+//!
+//! Implements real cryptographic verification for three payment methods:
+//! - Direct: ed25519 signature over `proof_id:amount`
+//! - Channel: ed25519 signature over `(channel_id, nonce, amount)` with nonce replay protection
+//! - Prepaid: API key lookup with balance deduction
 
 use axum::http::HeaderMap;
+use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 /// Payment method for proxy requests.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -192,14 +201,218 @@ impl PaymentProof {
         }
     }
 
-    /// Get the amount claimed in the payment.
-    pub fn claimed_amount(&self) -> u64 {
-        match &self.method {
-            PaymentMethod::Direct { amount, .. } => *amount,
-            PaymentMethod::Channel { amount, .. } => *amount,
-            PaymentMethod::Prepaid { .. } => u64::MAX, // Prepaid has unlimited per-request
+/// Get the amount claimed in the payment.
+pub fn claimed_amount(&self) -> u64 {
+    match &self.method {
+        PaymentMethod::Direct { amount, .. } => *amount,
+        PaymentMethod::Channel { amount, .. } => *amount,
+        PaymentMethod::Prepaid { .. } => u64::MAX, // Prepaid has unlimited per-request
+    }
+}
+}
+
+/// Payment verifier with real cryptographic checks.
+///
+/// Holds runtime state for replay protection, channel tracking, and
+/// prepaid account balances. All verification is deterministic and
+/// based on actual cryptographic operations.
+pub struct PaymentVerifier {
+    /// Known public keys for direct payment verification (peer_id -> verifying_key)
+    known_keys: RwLock<HashMap<String, VerifyingKey>>,
+    /// Replay protection: set of seen proof IDs
+    seen_proofs: RwLock<HashSet<String>>,
+    /// Payment channel state: channel_id -> (last_nonce, balance, peer_id)
+    channels: RwLock<HashMap<String, (u64, u64, String)>>,
+    /// Prepaid accounts: api_key -> (account_id, balance)
+    prepaid_accounts: RwLock<HashMap<String, (String, u64)>>,
+}
+
+impl PaymentVerifier {
+    /// Create a new payment verifier with empty state.
+    pub fn new() -> Self {
+        Self {
+            known_keys: RwLock::new(HashMap::new()),
+            seen_proofs: RwLock::new(HashSet::new()),
+            channels: RwLock::new(HashMap::new()),
+            prepaid_accounts: RwLock::new(HashMap::new()),
         }
     }
+
+    /// Register a known public key for direct payment verification.
+    pub async fn register_key(&self, peer_id: String, key: VerifyingKey) {
+        self.known_keys.write().await.insert(peer_id, key);
+    }
+
+    /// Register a payment channel with initial balance.
+    pub async fn register_channel(&self, channel_id: &str, balance: u64, peer_id: &str) {
+        self.channels
+            .write()
+            .await
+            .insert(channel_id.to_string(), (0, balance, peer_id.to_string()));
+    }
+
+    /// Register a prepaid account.
+    pub async fn register_prepaid_account(&self, api_key: &str, account_id: &str, balance: u64) {
+        self.prepaid_accounts
+            .write()
+            .await
+            .insert(api_key.to_string(), (account_id.to_string(), balance));
+    }
+
+    /// Verify a direct payment proof with real ed25519 signature check.
+    pub async fn verify_direct(
+        &self,
+        proof_id: &str,
+        amount: u64,
+        signature_hex: &str,
+        required_amount: u64,
+    ) -> Result<bool, String> {
+        // Replay protection
+        {
+            let mut seen = self.seen_proofs.write().await;
+            if seen.contains(proof_id) {
+                return Err("Proof ID already used (replay detected)".into());
+            }
+        }
+
+        // Amount check
+        if amount < required_amount {
+            return Ok(false);
+        }
+
+        // Decode signature
+        let sig_bytes = hex::decode(signature_hex.trim_start_matches("0x"))
+            .map_err(|_| "Invalid signature format")?;
+        if sig_bytes.len() != 64 {
+            return Err("Signature must be 64 bytes".into());
+        }
+        let sig = Signature::from_slice(&sig_bytes).map_err(|e| e.to_string())?;
+
+        // The message that was signed is `proof_id:amount`
+        let message = format!("{}:{}", proof_id, amount);
+        let message_bytes = message.as_bytes();
+
+        // Try to verify against known keys
+        let keys = self.known_keys.read().await;
+        for (peer_id, verifying_key) in keys.iter() {
+            if verifying_key.verify(message_bytes, &sig).is_ok() {
+                // Signature valid — mark as seen
+                drop(keys);
+                self.seen_proofs.write().await.insert(proof_id.to_string());
+                tracing::debug!(peer_id = %peer_id, proof_id = %proof_id, "Direct payment signature verified");
+                return Ok(true);
+            }
+        }
+
+        // No matching key found — reject
+        Err("No matching public key for signature".into())
+    }
+
+    /// Verify a channel payment with nonce and balance checks.
+    pub async fn verify_channel(
+        &self,
+        channel_id: &str,
+        nonce: u64,
+        amount: u64,
+        signature_hex: &str,
+        required_amount: u64,
+    ) -> Result<bool, String> {
+        // Amount check
+        if amount < required_amount {
+            return Ok(false);
+        }
+
+        // Decode signature
+        let sig_bytes = hex::decode(signature_hex.trim_start_matches("0x"))
+            .map_err(|_| "Invalid signature format")?;
+        if sig_bytes.len() != 64 {
+            return Err("Signature must be 64 bytes".into());
+        }
+        let sig = Signature::from_slice(&sig_bytes).map_err(|e| e.to_string())?;
+
+        // The message is `(channel_id, nonce, amount)`
+        let message = format!("{}:{}:{}", channel_id, nonce, amount);
+        let message_bytes = message.as_bytes();
+
+        // Check channel exists and verify nonce + balance
+        let mut channels = self.channels.write().await;
+        let channel = channels.get_mut(channel_id).ok_or("Channel not found")?;
+
+        let (last_nonce, balance, peer_id) = channel;
+
+        // Nonce must be strictly greater than last seen
+        if nonce <= *last_nonce {
+            return Err(format!(
+                "Nonce {} not greater than last nonce {}",
+                nonce, last_nonce
+            ));
+        }
+
+        // Balance must cover the amount
+        if *balance < amount {
+            return Err(format!(
+                "Insufficient channel balance: have {}, need {}",
+                balance, amount
+            ));
+        }
+
+        // Verify signature against channel peer's known keys
+        let keys = self.known_keys.read().await;
+        if let Some(verifying_key) = keys.get(peer_id) {
+            if verifying_key.verify(message_bytes, &sig).is_err() {
+                return Err("Channel signature verification failed".into());
+            }
+        } else {
+            return Err(format!("No public key registered for channel peer {}", peer_id));
+        }
+
+        // All checks passed — update nonce and deduct balance
+        *last_nonce = nonce;
+        *balance -= amount;
+
+        tracing::debug!(channel_id = %channel_id, nonce = nonce, "Channel payment verified");
+        Ok(true)
+    }
+
+    /// Verify a prepaid payment by looking up account and deducting balance.
+    pub async fn verify_prepaid(
+        &self,
+        api_key: &str,
+        required_amount: u64,
+    ) -> Result<bool, String> {
+        if api_key.is_empty() {
+            return Err("Empty API key".into());
+        }
+
+        let mut accounts = self.prepaid_accounts.write().await;
+        let account = accounts.get_mut(api_key).ok_or("Unknown API key")?;
+
+        let (account_id, balance) = account;
+
+        if *balance < required_amount {
+            return Err(format!(
+                "Insufficient prepaid balance: have {}, need {}",
+                from_micro(*balance),
+                from_micro(required_amount)
+            ));
+        }
+
+        *balance -= required_amount;
+
+        tracing::debug!(account_id = %account_id, "Prepaid balance deducted");
+        Ok(true)
+    }
+}
+
+impl Default for PaymentVerifier {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Convert micro-BKG to BKG for display.
+fn from_micro(micro: u64) -> f64 {
+    micro as f64 / 1_000_000.0
 }
 
 /// Response with payment information for 402 responses.

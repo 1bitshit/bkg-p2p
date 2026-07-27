@@ -171,7 +171,7 @@ pub fn handle_jsonrpc_body(state: &A2aState, body: &serde_json::Value) -> serde_
                 None => json!({}),
             }
         }
-        "agent/cards" | "bkg-peer.agent.cards" => {
+        "agent/cards" | "bkg-p2p.agent.cards" => {
             let cards: Vec<serde_json::Value> = state
                 .list_peer_cards()
                 .into_iter()

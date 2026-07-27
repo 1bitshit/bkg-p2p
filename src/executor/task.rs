@@ -380,6 +380,8 @@ pub struct InferenceResult {
     pub tokens_per_second: f64,
     /// Finish reason
     pub finish_reason: FinishReason,
+    /// Time to first token (ms)
+    pub ttfb_ms: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -398,6 +400,8 @@ pub struct WebFetchResult {
     pub headers: Vec<(String, String)>,
     /// Response body
     pub body: Vec<u8>,
+    /// Time to first byte (ms)
+    pub ttfb_ms: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

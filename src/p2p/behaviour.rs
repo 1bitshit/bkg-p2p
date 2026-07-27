@@ -38,7 +38,7 @@ pub fn build_swarm(
 ) -> anyhow::Result<Swarm<BkgPeerdBehaviour>> {
     let local_peer_id = PeerId::from(keypair.public());
 
-    let a2a_proto = StreamProtocol::new("/bkg-peer/a2a-rpc/1.0.0");
+    let a2a_proto = StreamProtocol::new("/bkg-p2p/a2a-rpc/1.0.0");
     let a2a_rpc = request_response::json::Behaviour::new(
         [(a2a_proto, request_response::ProtocolSupport::Full)],
         request_response::Config::default().with_request_timeout(Duration::from_secs(120)),
@@ -56,7 +56,7 @@ pub fn build_swarm(
             // Kademlia DHT
             let kademlia = {
                 let store = kad::store::MemoryStore::new(local_peer_id);
-                let config = kad::Config::new(libp2p::StreamProtocol::new("/bkg-peer/kad/1.0.0"));
+                let config = kad::Config::new(libp2p::StreamProtocol::new("/bkg-p2p/kad/1.0.0"));
                 kad::Behaviour::with_config(local_peer_id, store, config)
             };
 
@@ -80,8 +80,8 @@ pub fn build_swarm(
 
             // Identify
             let identify = identify::Behaviour::new(
-                identify::Config::new("/bkg-peer/1.0.0".to_string(), keypair.public())
-                    .with_agent_version(format!("bkg-peer/{}", env!("CARGO_PKG_VERSION"))),
+                identify::Config::new("/bkg-p2p/1.0.0".to_string(), keypair.public())
+                    .with_agent_version(format!("bkg-p2p/{}", env!("CARGO_PKG_VERSION"))),
             );
 
             Ok(BkgPeerdBehaviour {

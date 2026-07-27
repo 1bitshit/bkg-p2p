@@ -145,7 +145,7 @@ impl McpClient {
             protocol_version: MCP_VERSION.to_string(),
             capabilities: McpClientCapabilities::default(),
             client_info: McpClientInfo {
-                name: "bkg-peer".to_string(),
+                name: "bkg-p2p".to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),
             },
         };

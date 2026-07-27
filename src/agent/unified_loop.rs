@@ -1,6 +1,6 @@
 //! Shared ReAct loop for dashboard chat, background tasks, and the TOML agent runtime.
 //!
-//! Uses the same inference channel as the web UI (`InferenceTask` via `bkg-peer serve` loop) and
+//! Uses the same inference channel as the web UI (`InferenceTask` via `bkg-p2p serve` loop) and
 //! dispatches `<tool_call>` blocks to local [`ToolRegistry`] tools and optional MCP (`server:tool`).
 
 use std::collections::HashSet;
@@ -182,7 +182,7 @@ async fn agentic_action_tools_available(
     !infos.is_empty()
 }
 
-/// Print tool invocation and raw result to stderr when `bkg-peer serve --verbose-agentic` is on.
+/// Print tool invocation and raw result to stderr when `bkg-p2p serve --verbose-agentic` is on.
 fn eprint_verbose_tool_io(tool: &str, args: &serde_json::Value, ok: bool, result: &str) {
     const MAX_ARGS: usize = 12_000;
     const MAX_RESULT: usize = 200_000;

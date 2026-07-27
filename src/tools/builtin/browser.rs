@@ -366,7 +366,7 @@ async fn run_chrome_dump_dom(
 async fn fetch_with_reqwest(url: &str) -> Result<(String, String), ToolError> {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(30))
-        .user_agent("Mozilla/5.0 (compatible; bkg-peer/0.3)")
+        .user_agent("Mozilla/5.0 (compatible; bkg-p2p/0.3)")
         .build()
         .map_err(|e| ToolError::ExecutionFailed(format!("HTTP client error: {}", e)))?;
 

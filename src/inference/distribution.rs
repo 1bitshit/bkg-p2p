@@ -468,6 +468,24 @@ impl ModelDistributor {
 
     /// Generate announcements for all available models.
     pub async fn create_announcements(&self, local_peer_id: &str) -> Vec<ModelAnnouncement> {
+        // Calculate total available bandwidth from all active downloads
+        let total_bandwidth_bps = self.pending_downloads.read().await.iter()
+            .filter_map(|(_, state)| {
+                let speed_bps = state.download_speed();
+                if speed_bps > 0.0 {
+                    Some(speed_bps)
+                } else {
+                    None
+                }
+            })
+            .sum::<f64>();
+        
+        let bandwidth_mbps = if total_bandwidth_bps > 0.0 {
+            Some((total_bandwidth_bps / 1_000_000.0) as f64)
+        } else {
+            None
+        };
+
         self.available_models
             .read()
             .await
@@ -477,7 +495,7 @@ impl ModelDistributor {
                 size_bytes: meta.size_bytes,
                 file_hash: meta.file_hash.clone(),
                 provider_peer_id: local_peer_id.to_string(),
-                bandwidth_mbps: None, // TODO: Measure actual bandwidth
+                bandwidth_mbps,
             })
             .collect()
     }

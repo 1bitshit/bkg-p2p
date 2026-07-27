@@ -12,6 +12,8 @@ const WALLET: TableDefinition<&str, &[u8]> = TableDefinition::new("wallet");
 const AGENTS: TableDefinition<&str, &[u8]> = TableDefinition::new("agents");
 const TOOLS: TableDefinition<&str, &[u8]> = TableDefinition::new("tools");
 const SETTINGS: TableDefinition<&str, &[u8]> = TableDefinition::new("settings");
+/// Peer reputation profiles keyed by peer_id (MessagePack-encoded PeerReputation).
+const REPUTATION: TableDefinition<&str, &[u8]> = TableDefinition::new("reputation");
 /// Top-level run metadata keyed by run_id (MessagePack-encoded RunRecord).
 const RUNS: TableDefinition<&str, &[u8]> = TableDefinition::new("runs");
 /// Append-only event stream keyed by composite key "run_id\0seq".
@@ -75,6 +77,7 @@ impl Database {
         let _ = write_txn.open_table(SETTINGS)?;
         let _ = write_txn.open_table(RUNS)?;
         let _ = write_txn.open_table(RUN_EVENTS)?;
+        let _ = write_txn.open_table(REPUTATION)?;
     }
     write_txn.commit()?;
 
@@ -341,9 +344,70 @@ pub fn list_run_events(
                     .map_err(|e| DatabaseError::Deserialization(e.to_string()))?;
                 Ok(Some(value))
             }
-            None => Ok(None),
-        }
+None => Ok(None),
     }
+}
+
+// =========================================================================
+// Reputation
+// =========================================================================
+
+/// Store a reputation profile.
+pub fn store_reputation<T: Serialize>(
+    &self,
+    peer_id: &str,
+    profile: &T,
+) -> Result<(), DatabaseError> {
+    let bytes =
+        rmp_serde::to_vec(profile).map_err(|e| DatabaseError::Serialization(e.to_string()))?;
+    let write_txn = self.db.begin_write()?;
+    {
+        let mut table = write_txn.open_table(REPUTATION)?;
+        table.insert(peer_id, bytes.as_slice())?;
+    }
+    write_txn.commit()?;
+    Ok(())
+}
+
+/// Get a reputation profile by peer_id.
+pub fn get_reputation<T: DeserializeOwned>(
+    &self,
+    peer_id: &str,
+) -> Result<Option<T>, DatabaseError> {
+    let read_txn = self.db.begin_read()?;
+    let table = read_txn.open_table(REPUTATION)?;
+    match table.get(peer_id)? {
+        Some(bytes) => {
+            let value: T =
+                rmp_serde::from_slice(bytes.value())
+                    .map_err(|e| DatabaseError::Deserialization(e.to_string()))?;
+            Ok(Some(value))
+        }
+        None => Ok(None),
+    }
+}
+
+/// List all peer IDs with stored reputation profiles.
+pub fn list_reputation_ids(&self) -> Result<Vec<String>, DatabaseError> {
+    let read_txn = self.db.begin_read()?;
+    let table = read_txn.open_table(REPUTATION)?;
+    let mut ids = Vec::new();
+    for entry in table.iter()? {
+        let (key, _) = entry?;
+        ids.push(key.value().to_string());
+    }
+    Ok(ids)
+}
+
+/// Delete a reputation profile.
+pub fn delete_reputation(&self, peer_id: &str) -> Result<(), DatabaseError> {
+    let write_txn = self.db.begin_write()?;
+    {
+        let mut table = write_txn.open_table(REPUTATION)?;
+        table.remove(peer_id)?;
+    }
+    write_txn.commit()?;
+    Ok(())
 }
 
 impl Clone for Database {

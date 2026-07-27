@@ -248,7 +248,7 @@ impl SkillRegistry {
     ///
     /// Only includes skills that have `sharing.enabled = true`.
     /// The caller should serialize the result and publish it to the
-    /// `bkg-peer/skills/v1` GossipSub topic.
+    /// `bkg-p2p/skills/v1` GossipSub topic.
     pub async fn build_announcement_batch<F>(&self, signer: F) -> Option<SkillAnnouncementBatch>
     where
         F: FnOnce(&[u8]) -> Vec<u8>,

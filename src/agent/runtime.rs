@@ -149,7 +149,7 @@ pub struct AgentRuntime {
     pub session_store: Option<Arc<SessionStore>>,
     /// Vector store for cross-session agent memory (optional).
     pub vector_store: Option<Arc<VectorStore>>,
-    /// When set (e.g. `bkg-peer serve` with web), tasks use the shared unified tool+MCP loop.
+    /// When set (e.g. `bkg-p2p serve` with web), tasks use the shared unified tool+MCP loop.
     pub inference_sink: Option<Arc<dyn AgenticInferenceSink>>,
     /// Shared prompt fragments (same as node `Runtime`).
     pub prompts: Arc<crate::prompts::PromptBundle>,

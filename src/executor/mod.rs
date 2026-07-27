@@ -322,14 +322,15 @@ impl TaskExecutor {
             };
 
             return Ok(TaskData::Inference(InferenceResult {
-                text: response.text,
-                tokens_generated: response.tokens_generated,
-                tokens_per_second: response.tokens_per_second,
-                finish_reason,
-            }));
-        }
+text: response.text,
+                 tokens_generated: response.tokens_generated,
+                 tokens_per_second: response.tokens_per_second,
+                 finish_reason,
+                 ttfb_ms: 0,
+             }));
+         }
 
-        // --- Direct GGUF engine fallback ---
+         // --- Direct GGUF engine fallback ---
         let actual_path = self.find_gguf_model(&task.model)?;
 
         tracing::info!(
@@ -683,10 +684,13 @@ impl TaskExecutor {
             request = request.body(body);
         }
 
+        // Measure time to first byte
+        let request_start = Instant::now();
         let response = request
             .send()
             .await
             .map_err(|e| ExecutorError::WebError(e.to_string()))?;
+        let ttfb_ms = request_start.elapsed().as_millis() as u64;
 
         let status = response.status().as_u16();
         let headers: Vec<(String, String)> = response
@@ -701,11 +705,12 @@ impl TaskExecutor {
             .map_err(|e| ExecutorError::WebError(e.to_string()))?
             .to_vec();
 
-        Ok(TaskData::WebFetch(WebFetchResult {
-            status,
-            headers,
-            body,
-        }))
+Ok(TaskData::WebFetch(WebFetchResult {
+             status,
+             headers,
+             body,
+             ttfb_ms,
+         }))
     }
 
     /// Execute web search locally.
@@ -922,8 +927,9 @@ impl TaskExecutor {
                 text: response.text,
                 tokens_generated: response.tokens_generated,
                 tokens_per_second: response.tokens_per_second,
-                finish_reason,
-            });
+finish_reason,
+                 ttfb_ms: 0,
+             });
         }
 
         // --- Direct GGUF streaming fallback ---

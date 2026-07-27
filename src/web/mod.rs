@@ -360,9 +360,9 @@ pub struct AgentTaskRequest {
     pub model_ctx_chars: usize,
 }
 
-/// Static UI: `BKG_PEER_WEB_DIST` if set and valid, else `web/dist` under the crate root (after `npm run build` in `web/`).
+/// Static UI: `BKG_P2P_WEB_DIST` if set and valid, else `web/dist` under the crate root (after `npm run build` in `web/`).
 pub fn spa_dist_dir() -> Option<PathBuf> {
-    if let Ok(p) = std::env::var("BKG_PEER_WEB_DIST") {
+    if let Ok(p) = std::env::var("BKG_P2P_WEB_DIST") {
         let path = PathBuf::from(p);
         if path.join("index.html").is_file() {
             return Some(path);
@@ -1405,9 +1405,9 @@ async fn api_skills_meta(State(state): State<Arc<WebState>>) -> Json<SkillsMetaR
         skills_dir: state.skills_dir.display().to_string(),
         config_path: state.config_path.display().to_string(),
         registry_attached: state.skills.is_some(),
-        scan_cli: "bkg-peer skill scan",
-        list_cli: "bkg-peer skill list",
-        directory_toml_snippet: "# Optional — default is ~/.bkg-peer/skills\n[skills]\ndirectory = \"/path/to/skills\"\n",
+scan_cli: "bkg-p2p skill scan",
+list_cli: "bkg-p2p skill list",
+directory_toml_snippet: "# Optional — default is ~/.bkg-p2p/skills\n[skills]\ndirectory = \"/path/to/skills\"\n",
     })
 }
 
@@ -1415,7 +1415,7 @@ async fn api_skills_scan(State(state): State<Arc<WebState>>) -> Json<serde_json:
     let Some(reg) = &state.skills else {
         return Json(serde_json::json!({
             "ok": false,
-            "error": "Skill registry not attached (start full node with web, e.g. bkg-peer serve --web)."
+            "error": "Skill registry not attached (start full node with web, e.g. bkg-p2p serve --web)."
         }));
     };
     match reg.scan().await {
@@ -3458,7 +3458,7 @@ fn inference_settings_from_live(
         api_key_configured: !live.remote_api_key.trim().is_empty(),
         models_directory,
         gguf_presets,
-        hint: "Remote API: OpenAI-compatible Chat Completions (Bearer key). Saving updates ~/.bkg-peer/config.toml.",
+        hint: "Remote API: OpenAI-compatible Chat Completions (Bearer key). Saving updates ~/.bkg-p2p/config.toml.",
     }
 }
 

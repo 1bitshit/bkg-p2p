@@ -237,7 +237,7 @@ description = "A test agent"
     fn test_parse_full_spec() {
         let toml = r#"
 [agent]
-name = "bkg-peer-assistant"
+name = "bkg-p2p-assistant"
 description = "General-purpose assistant"
 version = "1.0.0"
 
@@ -263,7 +263,7 @@ repl = true
 websocket = true
 "#;
         let spec = AgentSpec::from_toml(toml).unwrap();
-        assert_eq!(spec.agent.name, "bkg-peer-assistant");
+        assert_eq!(spec.agent.name, "bkg-p2p-assistant");
         assert_eq!(spec.model.max_tokens, 4096);
         assert!(spec.capabilities.web_access);
         assert_eq!(spec.tools.builtin.len(), 3);

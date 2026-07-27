@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 
 /// GossipSub topic for provider advertisements.
-pub const PROVIDER_TOPIC: &str = "bkg-peer/providers/v1";
+pub const PROVIDER_TOPIC: &str = "bkg-p2p/providers/v1";
 
 /// A provider's advertisement of available LLM models and rate limits.
 #[derive(Debug, Clone, Serialize, Deserialize)]

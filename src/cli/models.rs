@@ -1,4 +1,4 @@
-//! `bkg-peer models` command - Manage AI models.
+//! `bkg-p2p models` command - Manage AI models.
 
 use clap::{Args, Subcommand};
 use std::io::{self, Write};
@@ -96,8 +96,8 @@ async fn list_models() -> anyhow::Result<()> {
     }
 
     println!();
-    println!("  To download: \x1b[36mbkg-peer models download <name>\x1b[0m");
-    println!("  Example:     \x1b[36mbkg-peer models download llama-3.2-1b\x1b[0m");
+    println!("  To download: \x1b[36mbkg-p2p models download <name>\x1b[0m");
+    println!("  Example:     \x1b[36mbkg-p2p models download llama-3.2-1b\x1b[0m");
     println!();
 
     Ok(())
@@ -160,7 +160,7 @@ async fn download_model(model: &str, quant: &str) -> anyhow::Result<()> {
     println!("  Model saved to: \x1b[36m{}\x1b[0m", output_path.display());
     println!();
     println!(
-        "  To use in chat: \x1b[36mbkg-peer chat --model {}-{}\x1b[0m",
+        "  To use in chat: \x1b[36mbkg-p2p chat --model {}-{}\x1b[0m",
         model, quant
     );
     println!();
@@ -204,7 +204,7 @@ async fn remove_model(model: &str) -> anyhow::Result<()> {
         }
         None => {
             println!("\x1b[33mModel '{}' not found.\x1b[0m", model);
-            println!("Run \x1b[36mbkg-peer models list\x1b[0m to see downloaded models.");
+            println!("Run \x1b[36mbkg-p2p models list\x1b[0m to see downloaded models.");
         }
     }
 

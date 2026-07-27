@@ -1,4 +1,4 @@
-//! `bkg-peer chat` command - Interactive AI chat with Claude-Code-style commands.
+//! `bkg-p2p chat` command - Interactive AI chat with Claude-Code-style commands.
 
 use clap::Args;
 use rustyline::completion::{Completer, Pair};
@@ -276,7 +276,7 @@ fn parse_slash_command(input: &str) -> Option<SlashCommand> {
 }
 
 fn show_help() {
-    println!("\n\x1b[1m=== bkg-peer Chat Commands ===\x1b[0m");
+    println!("\n\x1b[1m=== bkg-p2p Chat Commands ===\x1b[0m");
     println!();
     println!("  \x1b[1mGeneral\x1b[0m");
     println!("  \x1b[36m/help, /h, /?\x1b[0m         Show this help");
@@ -447,7 +447,7 @@ fn export_conversation(
     settings: &ChatSettings,
 ) -> anyhow::Result<()> {
     let mut content = String::new();
-    content.push_str("# bkg-peer Chat Export\n\n");
+    content.push_str("# bkg-p2p Chat Export\n\n");
     content.push_str(&format!("Model: {}\n", settings.model));
     content.push_str(&format!("Temperature: {}\n", settings.temperature));
     content.push_str(&format!("System: {}\n\n", settings.system_prompt));
@@ -549,7 +549,7 @@ pub async fn run(args: ChatArgs) -> anyhow::Result<()> {
         settings.stream = false;
     }
 
-    println!("\x1b[1m=== bkg-peer AI Chat ===\x1b[0m");
+    println!("\x1b[1m=== bkg-p2p AI Chat ===\x1b[0m");
     println!("Model: \x1b[36m{}\x1b[0m", settings.model);
     println!("Max tokens: {}", settings.max_tokens);
     println!("Temperature: {:.2}", settings.temperature);
@@ -936,7 +936,7 @@ pub async fn run(args: ChatArgs) -> anyhow::Result<()> {
                         );
                     } else {
                         println!("  \x1b[31m✗\x1b[0m Models: No models found");
-                        println!("    Run: bkg-peer models download llama-3.2-1b");
+                        println!("    Run: bkg-p2p models download llama-3.2-1b");
                     }
 
                     // Check identity

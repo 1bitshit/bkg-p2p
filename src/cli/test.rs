@@ -1,4 +1,4 @@
-//! `bkg-peer test` command - Test distributed execution and cluster operations.
+//! `bkg-p2p test` command - Test distributed execution and cluster operations.
 
 use clap::{Args, Subcommand};
 use std::process::{Child, Command, Stdio};
@@ -271,7 +271,7 @@ async fn run_distributed_test(agent_count: u32, duration_secs: u64) -> anyhow::R
     println!();
 
     // Create temporary directory for this test run
-    let temp_base = std::env::temp_dir().join(format!("bkg-peer_test_{}", std::process::id()));
+    let temp_base = std::env::temp_dir().join(format!("bkg-p2p_test_{}", std::process::id()));
     std::fs::create_dir_all(&temp_base)?;
 
     // Run agents sequentially to avoid thread-safety issues with libp2p
@@ -427,14 +427,14 @@ async fn run_cluster(
     run_test_job: bool,
     keep_alive: bool,
 ) -> anyhow::Result<()> {
-    println!("\x1b[1m=== bkg-peer Cluster Test ===\x1b[0m");
+    println!("\x1b[1m=== bkg-p2p Cluster Test ===\x1b[0m");
     println!("Spawning {} nodes...\n", nodes);
 
     // Get current executable path
     let exe_path = std::env::current_exe()?;
 
     // Create temp directory for cluster
-    let cluster_dir = std::env::temp_dir().join(format!("bkg-peer_cluster_{}", std::process::id()));
+    let cluster_dir = std::env::temp_dir().join(format!("bkg-p2p_cluster_{}", std::process::id()));
     std::fs::create_dir_all(&cluster_dir)?;
 
     let mut cluster_nodes: Vec<ClusterNode> = Vec::new();
@@ -460,7 +460,7 @@ async fn run_cluster(
             .arg("--listen")
             .arg(&p2p_addr)
             .arg("--provider")
-            .env("BKG_PEERD_BASE_DIR", &node_dir)
+            .env("BKG_P2P_BASE_DIR", &node_dir)
             .stdout(Stdio::null())
             .stderr(Stdio::null());
 

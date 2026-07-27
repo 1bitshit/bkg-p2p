@@ -1,8 +1,8 @@
-//! `bkg-peer run` and `bkg-peer pull` commands - Ollama/vLLM-style interface.
+//! `bkg-p2p run` and `bkg-p2p pull` commands - Ollama/vLLM-style interface.
 //!
 //! Provides familiar commands for users coming from Ollama or vLLM:
-//! - `bkg-peer run <model>` - Run a model interactively
-//! - `bkg-peer pull <model>` - Download a model
+//! - `bkg-p2p run <model>` - Run a model interactively
+//! - `bkg-p2p pull <model>` - Download a model
 
 use clap::Args;
 use std::io::{self, BufRead, Write};
@@ -83,9 +83,9 @@ pub async fn run(args: RunArgs) -> anyhow::Result<()> {
 
     if !model_exists && !args.distributed {
         println!("\x1b[33mModel '{}' not found locally.\x1b[0m", model_name);
-        println!("Run: \x1b[36mbkg-peer pull {}\x1b[0m", args.model);
+        println!("Run: \x1b[36mbkg-p2p pull {}\x1b[0m", args.model);
         println!(
-            "Or use: \x1b[36mbkg-peer run {} --distributed\x1b[0m to use network peers",
+            "Or use: \x1b[36mbkg-p2p run {} --distributed\x1b[0m to use network peers",
             args.model
         );
         return Ok(());

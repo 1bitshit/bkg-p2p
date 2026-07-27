@@ -1,4 +1,4 @@
-//! `bkg-peer skill` commands - Skill management.
+//! `bkg-p2p skill` commands - Skill management.
 
 use clap::Subcommand;
 use std::sync::Arc;
@@ -184,7 +184,7 @@ pub async fn run(cmd: SkillCommand) -> anyhow::Result<()> {
                 }
             } else {
                 println!("Skill '{}' not found", name);
-                println!("Use 'bkg-peer skill list' to see available skills.");
+                println!("Use 'bkg-p2p skill list' to see available skills.");
             }
         }
 
@@ -289,7 +289,7 @@ When helping users:
             println!("Created skill template: {}", skill_path.display());
             println!();
             println!("Edit the file to customize your skill, then run:");
-            println!("  bkg-peer skill scan");
+            println!("  bkg-p2p skill scan");
         }
     }
 

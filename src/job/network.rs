@@ -9,11 +9,11 @@ use super::{JobBid, JobId, JobRequest, JobResult};
 /// Topics for job-related GossipSub messages.
 pub mod topics {
     /// Topic for broadcasting job requests
-    pub const JOB_REQUESTS: &str = "bkg-peer/jobs/requests/v1";
+    pub const JOB_REQUESTS: &str = "bkg-p2p/jobs/requests/v1";
     /// Topic for broadcasting job bids
-    pub const JOB_BIDS: &str = "bkg-peer/jobs/bids/v1";
+    pub const JOB_BIDS: &str = "bkg-p2p/jobs/bids/v1";
     /// Topic for job status updates
-    pub const JOB_STATUS: &str = "bkg-peer/jobs/status/v1";
+    pub const JOB_STATUS: &str = "bkg-p2p/jobs/status/v1";
 }
 
 /// Message types sent over the P2P network for job coordination.

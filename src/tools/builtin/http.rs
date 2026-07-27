@@ -27,7 +27,7 @@ impl HttpTool {
     pub fn new() -> Self {
         let client = Client::builder()
             .timeout(DEFAULT_TIMEOUT)
-            .user_agent("bkg-peer/0.2")
+            .user_agent("bkg-p2p/0.2")
             .build()
             .unwrap_or_else(|_| Client::new());
 
@@ -229,7 +229,7 @@ impl WebFetchTool {
     pub fn new() -> Self {
         let client = Client::builder()
             .timeout(DEFAULT_TIMEOUT)
-            .user_agent("Mozilla/5.0 (compatible; bkg-peer/0.2)")
+            .user_agent("Mozilla/5.0 (compatible; bkg-p2p/0.2)")
             .build()
             .unwrap_or_else(|_| Client::new());
 

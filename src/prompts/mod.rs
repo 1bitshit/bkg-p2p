@@ -2,9 +2,9 @@
 //!
 //! Defaults ship in the `prompts/` directory at the repo root (embedded in the binary).
 //! Override any fragment by placing a same-named `*.txt` file. Resolution (first existing directory wins):
-//! 1. `[prompts].directory` in `config.toml` (also set from `BKG_PEER_PROMPTS_DIR` when the config is loaded)
-//! 2. `BKG_PEER_PROMPTS_DIR` if set and the directory exists
-//! 3. `~/.bkg-peer/prompts/` (under the data directory from bootstrap)
+//! 1. `[prompts].directory` in `config.toml` (also set from `BKG_P2P_PROMPTS_DIR` when the config is loaded)
+//! 2. `BKG_P2P_PROMPTS_DIR` if set and the directory exists
+//! 3. `~/.bkg-p2p/prompts/` (under the data directory from bootstrap)
 //!
 //! File names match the stem keys (e.g. `agentic_system_intro.txt`). Restart the node after edits.
 
@@ -28,14 +28,14 @@ pub fn resolve_prompt_overlay_dir(config: &Config) -> Option<PathBuf> {
             "prompts.directory is not a directory; ignoring"
         );
     }
-    if let Ok(env) = std::env::var("BKG_PEER_PROMPTS_DIR") {
+    if let Ok(env) = std::env::var("BKG_P2P_PROMPTS_DIR") {
         let path = PathBuf::from(env.trim());
         if path.is_dir() {
             return Some(path);
         }
         tracing::warn!(
             path = %path.display(),
-            "BKG_PEER_PROMPTS_DIR is not a directory; ignoring"
+            "BKG_P2P_PROMPTS_DIR is not a directory; ignoring"
         );
     }
     let default = crate::bootstrap::base_dir().join("prompts");
@@ -51,7 +51,7 @@ pub fn load_prompt_bundle(config: &Config) -> std::sync::Arc<PromptBundle> {
     if let Some(ref p) = overlay {
         tracing::info!(path = %p.display(), "Prompt overlay directory active (same-named .txt files override embedded defaults)");
     } else {
-        tracing::info!("Using embedded prompt defaults only (set BKG_PEER_PROMPTS_DIR or [prompts].directory to override)");
+        tracing::info!("Using embedded prompt defaults only (set BKG_P2P_PROMPTS_DIR or [prompts].directory to override)");
     }
     std::sync::Arc::new(PromptBundle::load(overlay.as_deref()))
 }

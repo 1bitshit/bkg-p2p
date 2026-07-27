@@ -1,3 +1,4 @@
+use crate::db::Database;
 use crate::reputation::types::*;
 use anyhow::Result;
 use std::collections::HashMap;
@@ -8,13 +9,19 @@ use tokio::sync::RwLock;
 pub struct ReputationStore {
     profiles: Arc<RwLock<HashMap<String, PeerReputation>>>,
     config: ReputationConfig,
+    db: Option<Database>,
 }
 
 impl ReputationStore {
     pub fn new(config: ReputationConfig) -> Self {
+        Self::new_with_db(config, None)
+    }
+
+    pub fn new_with_db(config: ReputationConfig, db: Option<Database>) -> Self {
         Self {
             profiles: Arc::new(RwLock::new(HashMap::new())),
             config,
+            db,
         }
     }
 
@@ -112,15 +119,42 @@ impl ReputationStore {
         peers
     }
 
-    /// Persist reputation data
-    pub async fn persist(&self) -> Result<()> {
-        // TODO: Implement persistence to redb or file
-        Ok(())
-    }
+/// Persist all in-memory reputation profiles to the database.
+///
+/// If a database is attached, every profile is serialized with MessagePack
+/// and written to the `reputation` table. Without a database this is a no-op.
+pub async fn persist(&self) -> Result<()> {
+    let db = match &self.db {
+        Some(db) => db,
+        None => return Ok(()),
+    };
 
-    /// Load reputation data
-    pub async fn load(&self) -> Result<()> {
-        // TODO: Implement loading from redb or file
-        Ok(())
+    let profiles = self.profiles.read().await;
+    for (peer_id, profile) in profiles.iter() {
+        db.store_reputation(peer_id, profile)?;
     }
+    Ok(())
+}
+
+/// Load all reputation profiles from the database into memory.
+///
+/// Existing in-memory profiles are replaced by the persisted state.
+/// Without a database this is a no-op.
+pub async fn load(&self) -> Result<()> {
+    let db = match &self.db {
+        Some(db) => db,
+        None => return Ok(()),
+    };
+
+    let ids = db.list_reputation_ids()?;
+    let mut profiles = self.profiles.write().await;
+    profiles.clear();
+
+    for peer_id in ids {
+        if let Some(profile) = db.get_reputation::<PeerReputation>(&peer_id)? {
+            profiles.insert(peer_id, profile);
+        }
+    }
+    Ok(())
+}
 }
