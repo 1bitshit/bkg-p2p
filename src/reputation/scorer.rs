@@ -1,6 +1,6 @@
 use crate::reputation::types::*;
 use chrono::Utc;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Reputation scorer for calculating and updating scores
 pub struct ReputationScorer {

@@ -52,31 +52,52 @@ fn load_flow_template(json: &str) -> Option<crate::flow::FlowSpec> {
 }
 
 fn minimal_example_flow() -> Option<crate::flow::FlowSpec> {
-    load_flow_template(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/flows/minimal.json")))
+    load_flow_template(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/templates/flows/minimal.json"
+    )))
 }
 
 fn interpreter_example_flow() -> Option<crate::flow::FlowSpec> {
-    load_flow_template(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/flows/interpreter-linear.json")))
+    load_flow_template(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/templates/flows/interpreter-linear.json"
+    )))
 }
 
 fn deep_researcher_flow() -> Option<crate::flow::FlowSpec> {
-    load_flow_template(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/flows/deep-researcher.json")))
+    load_flow_template(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/templates/flows/deep-researcher.json"
+    )))
 }
 
 fn code_reviewer_flow() -> Option<crate::flow::FlowSpec> {
-    load_flow_template(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/flows/code-reviewer.json")))
+    load_flow_template(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/templates/flows/code-reviewer.json"
+    )))
 }
 
 fn creative_writer_flow() -> Option<crate::flow::FlowSpec> {
-    load_flow_template(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/flows/creative-writer.json")))
+    load_flow_template(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/templates/flows/creative-writer.json"
+    )))
 }
 
 fn data_analyst_flow() -> Option<crate::flow::FlowSpec> {
-    load_flow_template(include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/flows/data-analyst.json")))
+    load_flow_template(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/templates/flows/data-analyst.json"
+    )))
 }
 
 fn crew_example_flow() -> Option<crate::flow::FlowSpec> {
-    const RAW: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/templates/crews/minimal.json"));
+    const RAW: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/templates/crews/minimal.json"
+    ));
     let crew: crate::crew::CrewSpec = serde_json::from_str(RAW).ok()?;
     Some(crate::flow::FlowSpec::from_crew(crew))
 }
@@ -125,7 +146,8 @@ pub fn builtin_entries() -> Vec<AgentLibraryEntry> {
         v.push(AgentLibraryEntry {
             id: "builtin-agent-researcher".into(),
             name: "Deep Researcher".into(),
-            description: "Classify → guardrail → research → synthesize into a polished report.".into(),
+            description: "Classify → guardrail → research → synthesize into a polished report."
+                .into(),
             kind: "flow".into(),
             flow_spec: Some(spec),
             task_type: None,
@@ -136,7 +158,8 @@ pub fn builtin_entries() -> Vec<AgentLibraryEntry> {
         v.push(AgentLibraryEntry {
             id: "builtin-agent-coder".into(),
             name: "Code Reviewer".into(),
-            description: "Analyze → refactor suggestions → formatted review with severity levels.".into(),
+            description: "Analyze → refactor suggestions → formatted review with severity levels."
+                .into(),
             kind: "flow".into(),
             flow_spec: Some(spec),
             task_type: None,
@@ -147,7 +170,8 @@ pub fn builtin_entries() -> Vec<AgentLibraryEntry> {
         v.push(AgentLibraryEntry {
             id: "builtin-agent-writer".into(),
             name: "Creative Writer".into(),
-            description: "Classify → outline → draft → editor pass for polished creative writing.".into(),
+            description: "Classify → outline → draft → editor pass for polished creative writing."
+                .into(),
             kind: "flow".into(),
             flow_spec: Some(spec),
             task_type: None,
@@ -168,8 +192,16 @@ pub fn builtin_entries() -> Vec<AgentLibraryEntry> {
 
     // Simple single-agent presets
     let simple_presets: &[(&str, &str, &str)] = &[
-        ("builtin-agent-assistant", "Assistant", "General-purpose personal assistant."),
-        ("builtin-agent-monitor", "Monitor", "System monitoring agent."),
+        (
+            "builtin-agent-assistant",
+            "Assistant",
+            "General-purpose personal assistant.",
+        ),
+        (
+            "builtin-agent-monitor",
+            "Monitor",
+            "System monitoring agent.",
+        ),
     ];
     for &(id, name, desc) in simple_presets {
         v.push(AgentLibraryEntry {
@@ -201,8 +233,7 @@ pub async fn save_user_entries(path: &Path, entries: &[AgentLibraryEntry]) -> st
     if let Some(dir) = path.parent() {
         tokio::fs::create_dir_all(dir).await?;
     }
-    let j = serde_json::to_string_pretty(entries).map_err(|e| {
-        std::io::Error::new(std::io::ErrorKind::InvalidData, e)
-    })?;
+    let j = serde_json::to_string_pretty(entries)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
     tokio::fs::write(path, j).await
 }

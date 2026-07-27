@@ -340,7 +340,8 @@ pub async fn run(args: ServeArgs) -> anyhow::Result<()> {
             let (crew_kickoff_tx, crew_kickoff_rx) = mpsc::channel::<crate::web::CrewKickoffJob>(8);
             let (flow_kickoff_tx, flow_kickoff_rx) = mpsc::channel::<crate::web::FlowKickoffJob>(8);
             let (peer_dial_tx, peer_dial_rx) = mpsc::channel::<String>(32);
-            let listen_addrs_clone = std::sync::Arc::new(tokio::sync::RwLock::new(Vec::<String>::new()));
+            let listen_addrs_clone =
+                std::sync::Arc::new(tokio::sync::RwLock::new(Vec::<String>::new()));
             let p2p_network_hints = std::sync::Arc::new(crate::web::P2pNetworkHints {
                 bootstrap_peers: config.p2p.bootstrap_peers.clone(),
                 mdns_enabled: config.p2p.mdns_enabled,
@@ -384,11 +385,11 @@ pub async fn run(args: ServeArgs) -> anyhow::Result<()> {
                 channel_registry: None,
                 wallet: None,
                 vector_store: Some(crate::vector::get_or_init_vector_store()),
-verbose_agentic_io: args.verbose_agentic,
- database: Some(runtime.database.clone()),
- listen_addresses: listen_addrs_clone.clone(),
- metrics: Some(runtime.metrics.clone()),
- a2a: runtime.a2a.clone(),
+                verbose_agentic_io: args.verbose_agentic,
+                database: Some(runtime.database.clone()),
+                listen_addresses: listen_addrs_clone.clone(),
+                metrics: Some(runtime.metrics.clone()),
+                a2a: runtime.a2a.clone(),
                 a2a_public_base_url: format!("http://{}", config.web.listen_addr),
                 crew_store: crew_store.clone(),
                 crew_kickoff_tx: Some(crew_kickoff_tx),
@@ -397,6 +398,7 @@ verbose_agentic_io: args.verbose_agentic,
                 prompts: runtime.prompts.clone(),
                 agent_library_path: agent_library_path.clone(),
                 agent_library_user: agent_library_user.clone(),
+                hitl_store: std::sync::Arc::new(crate::hitl::HitlStore::default()),
             }));
             (
                 Some(peer_dial_rx),
@@ -902,38 +904,38 @@ verbose_agentic_io: args.verbose_agentic,
             }
         }
 
-fn persist_run_record(runtime: &Runtime, rec: RunRecord) {
-    let _ = runtime.database.store_run(&rec.run_id, &rec);
-}
+        fn persist_run_record(runtime: &Runtime, rec: RunRecord) {
+            let _ = runtime.database.store_run(&rec.run_id, &rec);
+        }
 
-fn emit_run_event(runtime: &Runtime, run_id: &str, event: RunEvent) {
-    let _ = runtime.database.append_run_event(run_id, &event);
-}
+        fn emit_run_event(runtime: &Runtime, run_id: &str, event: RunEvent) {
+            let _ = runtime.database.append_run_event(run_id, &event);
+        }
 
-// Crew runs (inline — `TaskExecutor` is not `Send`, same as agent tasks).
-if let Some(ref mut ckrx) = crew_kickoff_rx {
-    while let Ok(job) = ckrx.try_recv() {
-        if let Some(st) = web_state.as_ref() {
-            let store = st.crew_store.clone();
-            let ws = st.ws_control_tx.clone();
+        // Crew runs (inline — `TaskExecutor` is not `Send`, same as agent tasks).
+        if let Some(ref mut ckrx) = crew_kickoff_rx {
+            while let Ok(job) = ckrx.try_recv() {
+                if let Some(st) = web_state.as_ref() {
+                    let store = st.crew_store.clone();
+                    let ws = st.ws_control_tx.clone();
 
-            let run_record = RunRecord::new(&job.run_id, RunKind::Crew, &job.spec.name);
-            persist_run_record(&runtime, run_record);
-            emit_run_event(
-                &runtime,
-                &job.run_id,
-                RunEvent {
-                    seq: 0,
-                    ts: chrono::Utc::now(),
-                    kind: RunEventKind::Queued,
-                    message: "[crew] queued".to_string(),
-                    payload: None,
-                },
-            );
+                    let run_record = RunRecord::new(&job.run_id, RunKind::Crew, &job.spec.name);
+                    persist_run_record(&runtime, run_record);
+                    emit_run_event(
+                        &runtime,
+                        &job.run_id,
+                        RunEvent {
+                            seq: 0,
+                            ts: chrono::Utc::now(),
+                            kind: RunEventKind::Queued,
+                            message: "[crew] queued".to_string(),
+                            payload: None,
+                        },
+                    );
 
-            store.update_status(&job.run_id, "running");
-            store.push_log(&job.run_id, "[crew] started".to_string());
-            crate::web::broadcast_crews_changed(&ws);
+                    store.update_status(&job.run_id, "running");
+                    store.push_log(&job.run_id, "[crew] started".to_string());
+                    crate::web::broadcast_crews_changed(&ws);
                     let extras = crate::agent::AgentTaskExtras::default();
                     let orch = runtime.local_peer_id;
                     let res = crate::crew::run_crew(
@@ -992,31 +994,31 @@ if let Some(ref mut ckrx) = crew_kickoff_rx {
             }
         }
 
-// Flow runs (DAG over LLM + optional nested crews).
-if let Some(ref mut frx) = flow_kickoff_rx {
-    while let Ok(job) = frx.try_recv() {
-        if let Some(st) = web_state.as_ref() {
-            let fs = st.flow_store.clone();
-            let ws = st.ws_control_tx.clone();
-            let mcp = st.mcp_manager.read().await.clone();
+        // Flow runs (DAG over LLM + optional nested crews).
+        if let Some(ref mut frx) = flow_kickoff_rx {
+            while let Ok(job) = frx.try_recv() {
+                if let Some(st) = web_state.as_ref() {
+                    let fs = st.flow_store.clone();
+                    let ws = st.ws_control_tx.clone();
+                    let mcp = st.mcp_manager.read().await.clone();
 
-            let run_record = RunRecord::new(&job.run_id, RunKind::Flow, &job.spec.name);
-            persist_run_record(&runtime, run_record);
-            emit_run_event(
-                &runtime,
-                &job.run_id,
-                RunEvent {
-                    seq: 0,
-                    ts: chrono::Utc::now(),
-                    kind: RunEventKind::Queued,
-                    message: "[flow] queued".to_string(),
-                    payload: None,
-                },
-            );
+                    let run_record = RunRecord::new(&job.run_id, RunKind::Flow, &job.spec.name);
+                    persist_run_record(&runtime, run_record);
+                    emit_run_event(
+                        &runtime,
+                        &job.run_id,
+                        RunEvent {
+                            seq: 0,
+                            ts: chrono::Utc::now(),
+                            kind: RunEventKind::Queued,
+                            message: "[flow] queued".to_string(),
+                            payload: None,
+                        },
+                    );
 
-            fs.update_status(&job.run_id, "running");
-            fs.push_log(&job.run_id, "[flow] started");
-            crate::web::broadcast_flow_log(&ws, &job.run_id, "[flow] started", "running");
+                    fs.update_status(&job.run_id, "running");
+                    fs.push_log(&job.run_id, "[flow] started");
+                    crate::web::broadcast_flow_log(&ws, &job.run_id, "[flow] started", "running");
                     crate::web::broadcast_flows_changed(&ws);
                     let extras = crate::agent::AgentTaskExtras {
                         use_mcp: mcp.is_some(),
@@ -1178,7 +1180,10 @@ if let Some(ref mut frx) = flow_kickoff_rx {
         if escrow_sweep_interval.tick().now_or_never().is_some() {
             let swept = runtime.wallet.sweep_expired_escrows().await;
             if !swept.is_empty() {
-                tracing::info!(count = swept.len(), "Swept expired escrows, tokens refunded");
+                tracing::info!(
+                    count = swept.len(),
+                    "Swept expired escrows, tokens refunded"
+                );
             }
         }
 

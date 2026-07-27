@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{Span, field};
+use tracing::{field, Span};
 
 /// Telemetry configuration
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

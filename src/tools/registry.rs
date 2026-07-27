@@ -227,7 +227,11 @@ impl ToolRegistry {
             let required_params = schema
                 .get("required")
                 .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
                 .unwrap_or_default();
             tools.push(ToolInfo {
                 name: name.clone(),

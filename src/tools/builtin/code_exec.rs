@@ -11,8 +11,8 @@ use async_trait::async_trait;
 use tokio::process::Command;
 
 use crate::tools::tool::{
-    optional_i64, require_str, ApprovalRequirement, Tool, ToolContext, ToolDomain,
-    ToolError, ToolOutput,
+    optional_i64, require_str, ApprovalRequirement, Tool, ToolContext, ToolDomain, ToolError,
+    ToolOutput,
 };
 
 /// Maximum output size before truncation.
@@ -142,7 +142,11 @@ impl Tool for CodeExecTool {
         // Create isolated temp directory
         let tmp_path = std::env::temp_dir().join(format!(
             "bkg-peer_code_{}",
-            uuid::Uuid::new_v4().to_string().split('-').next().unwrap_or("x")
+            uuid::Uuid::new_v4()
+                .to_string()
+                .split('-')
+                .next()
+                .unwrap_or("x")
         ));
         tokio::fs::create_dir_all(&tmp_path)
             .await
@@ -182,18 +186,20 @@ impl Tool for CodeExecTool {
         cmd.stderr(std::process::Stdio::piped());
 
         // Spawn and wait with timeout
-        let child = cmd
-            .spawn()
-            .map_err(|e| ToolError::ExecutionFailed(format!("Failed to spawn {interpreter}: {e}")))?;
+        let child = cmd.spawn().map_err(|e| {
+            ToolError::ExecutionFailed(format!("Failed to spawn {interpreter}: {e}"))
+        })?;
 
-        let result = tokio::time::timeout(
-            Duration::from_secs(timeout_secs),
-            child.wait_with_output(),
-        )
-        .await;
+        let result =
+            tokio::time::timeout(Duration::from_secs(timeout_secs), child.wait_with_output()).await;
 
         let elapsed = start.elapsed();
-        let cleanup = || { let p = tmp_path.clone(); tokio::spawn(async move { let _ = tokio::fs::remove_dir_all(&p).await; }); };
+        let cleanup = || {
+            let p = tmp_path.clone();
+            tokio::spawn(async move {
+                let _ = tokio::fs::remove_dir_all(&p).await;
+            });
+        };
 
         match result {
             Ok(Ok(output)) => {
@@ -238,7 +244,6 @@ impl Tool for CodeExecTool {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

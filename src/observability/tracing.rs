@@ -1,4 +1,4 @@
-use tracing::{Span, field};
+use tracing::{field, Span};
 
 /// BKG P2P Tracer wrapper
 pub struct BkgTracer {

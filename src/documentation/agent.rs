@@ -1,5 +1,5 @@
-use crate::documentation::types::*;
 use crate::documentation::audit::{AuditEntry, AuditOperation};
+use crate::documentation::types::*;
 use crate::documentation::{DocumentationAudit, DocumentationProvider, LibraryResolver};
 use anyhow::Result;
 use chrono::Utc;
@@ -40,7 +40,10 @@ impl DocumentationAgent {
     }
 
     /// Resolve a library query
-    pub async fn resolve_library(&self, request: ResolveLibraryRequest) -> Result<Vec<LibraryMatch>> {
+    pub async fn resolve_library(
+        &self,
+        request: ResolveLibraryRequest,
+    ) -> Result<Vec<LibraryMatch>> {
         let result = self.resolver.resolve(request.clone()).await?;
         Ok(result)
     }
@@ -48,7 +51,11 @@ impl DocumentationAgent {
     /// Fetch documentation for a library
     pub async fn fetch_docs(&self, request: DocumentationRequest) -> Result<DocumentationResult> {
         let mut audit = self.audit.lock().await;
-        let cache_key = format!("{}:{}", request.library_id.name, request.library_id.version.as_deref().unwrap_or("latest"));
+        let cache_key = format!(
+            "{}:{}",
+            request.library_id.name,
+            request.library_id.version.as_deref().unwrap_or("latest")
+        );
 
         if self.cache.is_valid(&cache_key).await {
             if let Some(entry) = self.cache.get(&cache_key).await {
@@ -75,7 +82,8 @@ impl DocumentationAgent {
                         library_id: request.library_id.clone(),
                         content: result.clone(),
                         created_at: Utc::now(),
-                        expires_at: Utc::now() + chrono::Duration::seconds(self.config.cache.default_ttl_secs as i64),
+                        expires_at: Utc::now()
+                            + chrono::Duration::seconds(self.config.cache.default_ttl_secs as i64),
                         etag: None,
                         last_modified: None,
                         content_hash: result.content_hash.clone(),

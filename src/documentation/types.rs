@@ -202,7 +202,7 @@ impl Default for DocumentationConfig {
             cache: CacheConfig {
                 max_entries: 10000,
                 max_size_bytes: 500 * 1024 * 1024, // 500MB
-                default_ttl_secs: 86400, // 24 hours
+                default_ttl_secs: 86400,           // 24 hours
                 lru_eviction: true,
             },
             index: IndexConfig {

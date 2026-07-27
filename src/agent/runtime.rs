@@ -236,6 +236,7 @@ impl AgentRuntime {
             node_tool_tx,
             prompts,
             inference_sink,
+            None, // hitl_store
         )
     }
 

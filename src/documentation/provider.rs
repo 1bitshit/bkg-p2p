@@ -1,6 +1,6 @@
-use async_trait::async_trait;
 use crate::documentation::types::*;
 use anyhow::Result;
+use async_trait::async_trait;
 
 /// Trait for documentation providers
 #[async_trait]

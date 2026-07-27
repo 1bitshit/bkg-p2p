@@ -51,13 +51,7 @@ pub trait AgenticProgressSink: Send + Sync {
     async fn set_tokens(&self, tokens: u32);
     async fn record_tool_step(&self, line: String, tokens: u32);
     /// Structured tool call event (started / completed).
-    async fn record_tool_call(
-        &self,
-        _tool_name: &str,
-        _status: &str,
-        _args: &str,
-        _result: &str,
-    ) {
+    async fn record_tool_call(&self, _tool_name: &str, _status: &str, _args: &str, _result: &str) {
         // default no-op
     }
 }
@@ -298,19 +292,19 @@ pub async fn run_unified_agentic_loop(
     let mut url_fetch_nudges: u32 = 0;
 
     for iter in 1..=AGENTIC_MAX_ITERS {
-         let _pass_span = tracing::info_span!(
-             "react_pass",
-             iter,
-             run_id = run_id.unwrap_or("none"),
-             model = %model
-         );
-         let _enter = _pass_span.enter();
-         if conversation.len() > conv_max_chars {
-             conversation =
-                 compaction::prune_string_conversation(&conversation, prefix_len, conv_max_chars);
-         }
+        let _pass_span = tracing::info_span!(
+            "react_pass",
+            iter,
+            run_id = run_id.unwrap_or("none"),
+            model = %model
+        );
+        let _enter = _pass_span.enter();
+        if conversation.len() > conv_max_chars {
+            conversation =
+                compaction::prune_string_conversation(&conversation, prefix_len, conv_max_chars);
+        }
 
-         if iter == AGENTIC_MAX_ITERS {
+        if iter == AGENTIC_MAX_ITERS {
             conversation.push_str("\n\n");
             conversation.push_str(prompts.unified_final_turn_suffix.trim());
             conversation.push('\n');
@@ -447,7 +441,10 @@ pub async fn run_unified_agentic_loop(
                 let last = &tool_records[tool_records.len() - 1];
                 let preview: String = last.result.chars().take(4000).collect();
                 if preview.trim().is_empty() {
-                    format!("Completed {} tool call(s). No additional commentary from model.", tool_records.len())
+                    format!(
+                        "Completed {} tool call(s). No additional commentary from model.",
+                        tool_records.len()
+                    )
                 } else {
                     preview
                 }
@@ -595,15 +592,15 @@ pub async fn run_unified_agentic_loop(
         let mut pass_failures = 0u32;
         let call_count = calls.len();
 
-for call in calls {
-             let _tool_span = tracing::info_span!(
-                 "tool_execute",
-                 tool = %call.name,
-                 run_id = run_id.unwrap_or("none")
-             );
-             let _enter_tool = _tool_span.enter();
-             // Emit structured "started" event.
-             if let Some(ref p) = progress {
+        for call in calls {
+            let _tool_span = tracing::info_span!(
+                "tool_execute",
+                tool = %call.name,
+                run_id = run_id.unwrap_or("none")
+            );
+            let _enter_tool = _tool_span.enter();
+            // Emit structured "started" event.
+            if let Some(ref p) = progress {
                 let args_preview: String = call.args.to_string().chars().take(500).collect();
                 p.record_tool_call(&call.name, "started", &args_preview, "")
                     .await;
@@ -691,11 +688,7 @@ for call in calls {
                                         "hitl-{}-{}-{}",
                                         run_id.unwrap_or("none"),
                                         call.name,
-                                        call.args
-                                            .to_string()
-                                            .chars()
-                                            .take(20)
-                                            .collect::<String>()
+                                        call.args.to_string().chars().take(20).collect::<String>()
                                     );
                                     let now = chrono::Utc::now().to_rfc3339();
                                     let req = crate::hitl::HitlRequest {
@@ -792,13 +785,8 @@ for call in calls {
                 p.record_tool_step(line, total_tokens).await;
                 let result_preview: String = summary.chars().take(500).collect();
                 let args_preview: String = call.args.to_string().chars().take(500).collect();
-                p.record_tool_call(
-                    &call.name,
-                    "completed",
-                    &args_preview,
-                    &result_preview,
-                )
-                .await;
+                p.record_tool_call(&call.name, "completed", &args_preview, &result_preview)
+                    .await;
             }
             let truncated = if summary.len() > 3000 {
                 format!("{}… (truncated)", &summary[..3000])

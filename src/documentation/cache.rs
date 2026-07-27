@@ -1,11 +1,11 @@
 use crate::documentation::types::*;
 use anyhow::Result;
+use chrono::Utc;
 use lru::LruCache;
+use serde::{Deserialize, Serialize};
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use chrono::Utc;
-use serde::{Serialize, Deserialize};
 
 /// Content-addressed cache for documentation
 pub struct DocumentationCache {

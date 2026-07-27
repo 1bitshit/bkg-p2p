@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use libp2p::PeerId;
+use serde::{Deserialize, Serialize};
 
 /// Proof of work or task completion
 #[derive(Debug, Clone, Serialize, Deserialize)]

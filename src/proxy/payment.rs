@@ -201,14 +201,14 @@ impl PaymentProof {
         }
     }
 
-/// Get the amount claimed in the payment.
-pub fn claimed_amount(&self) -> u64 {
-    match &self.method {
-        PaymentMethod::Direct { amount, .. } => *amount,
-        PaymentMethod::Channel { amount, .. } => *amount,
-        PaymentMethod::Prepaid { .. } => u64::MAX, // Prepaid has unlimited per-request
+    /// Get the amount claimed in the payment.
+    pub fn claimed_amount(&self) -> u64 {
+        match &self.method {
+            PaymentMethod::Direct { amount, .. } => *amount,
+            PaymentMethod::Channel { amount, .. } => *amount,
+            PaymentMethod::Prepaid { .. } => u64::MAX, // Prepaid has unlimited per-request
+        }
     }
-}
 }
 
 /// Payment verifier with real cryptographic checks.
@@ -294,14 +294,19 @@ impl PaymentVerifier {
 
         // Try to verify against known keys
         let keys = self.known_keys.read().await;
+        let mut verified_peer: Option<String> = None;
         for (peer_id, verifying_key) in keys.iter() {
             if verifying_key.verify(message_bytes, &sig).is_ok() {
-                // Signature valid — mark as seen
-                drop(keys);
-                self.seen_proofs.write().await.insert(proof_id.to_string());
-                tracing::debug!(peer_id = %peer_id, proof_id = %proof_id, "Direct payment signature verified");
-                return Ok(true);
+                verified_peer = Some(peer_id.clone());
+                break;
             }
+        }
+        drop(keys);
+
+        if let Some(peer_id) = verified_peer {
+            self.seen_proofs.write().await.insert(proof_id.to_string());
+            tracing::debug!(peer_id = %peer_id, proof_id = %proof_id, "Direct payment signature verified");
+            return Ok(true);
         }
 
         // No matching key found — reject
@@ -363,7 +368,10 @@ impl PaymentVerifier {
                 return Err("Channel signature verification failed".into());
             }
         } else {
-            return Err(format!("No public key registered for channel peer {}", peer_id));
+            return Err(format!(
+                "No public key registered for channel peer {}",
+                peer_id
+            ));
         }
 
         // All checks passed — update nonce and deduct balance

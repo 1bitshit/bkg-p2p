@@ -684,11 +684,7 @@ impl std::fmt::Display for ChannelStats {
             "Local balance:   {:.6} BKG",
             from_micro(self.total_local_balance)
         )?;
-        writeln!(
-            f,
-            "Total sent:      {:.6} BKG",
-            from_micro(self.total_sent)
-        )?;
+        writeln!(f, "Total sent:      {:.6} BKG", from_micro(self.total_sent))?;
         writeln!(
             f,
             "Total received:  {:.6} BKG",

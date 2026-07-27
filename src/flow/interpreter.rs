@@ -81,12 +81,21 @@ fn activation_for_cel(
 }
 
 fn cel_fill_context(ctx: &mut Context, activation: &Value, iteration: u32) -> Result<(), String> {
-    ctx.add_variable("inputs", activation.get("inputs").cloned().unwrap_or(Value::Null))
-        .map_err(|e| e.to_string())?;
-    ctx.add_variable("outputs", activation.get("outputs").cloned().unwrap_or(Value::Null))
-        .map_err(|e| e.to_string())?;
-    ctx.add_variable("state", activation.get("state").cloned().unwrap_or(Value::Null))
-        .map_err(|e| e.to_string())?;
+    ctx.add_variable(
+        "inputs",
+        activation.get("inputs").cloned().unwrap_or(Value::Null),
+    )
+    .map_err(|e| e.to_string())?;
+    ctx.add_variable(
+        "outputs",
+        activation.get("outputs").cloned().unwrap_or(Value::Null),
+    )
+    .map_err(|e| e.to_string())?;
+    ctx.add_variable(
+        "state",
+        activation.get("state").cloned().unwrap_or(Value::Null),
+    )
+    .map_err(|e| e.to_string())?;
     let it = activation
         .get("input_as_text")
         .and_then(|x| x.as_str())
@@ -107,7 +116,9 @@ fn cel_bool(expr: &str, activation: &Value, iteration: u32) -> Result<bool, Stri
     let program = Program::compile(expr).map_err(|e| format!("CEL parse: {e:?}"))?;
     let mut ctx = Context::default();
     cel_fill_context(&mut ctx, activation, iteration)?;
-    let v = program.execute(&ctx).map_err(|e| format!("CEL exec: {e}"))?;
+    let v = program
+        .execute(&ctx)
+        .map_err(|e| format!("CEL exec: {e}"))?;
     match v {
         cel::Value::Bool(b) => Ok(b),
         cel::Value::Int(i) => Ok(i != 0),
@@ -125,7 +136,9 @@ fn cel_json_value(expr: &str, activation: &Value, iteration: u32) -> Result<Valu
     let program = Program::compile(expr).map_err(|e| format!("CEL parse: {e:?}"))?;
     let mut ctx = Context::default();
     cel_fill_context(&mut ctx, activation, iteration)?;
-    let v = program.execute(&ctx).map_err(|e| format!("CEL exec: {e}"))?;
+    let v = program
+        .execute(&ctx)
+        .map_err(|e| format!("CEL exec: {e}"))?;
     v.json().map_err(|e| format!("CEL→JSON: {e}"))
 }
 
@@ -176,8 +189,7 @@ fn pick_next(
             let want = branch.ok_or_else(|| format!("node {}: if/else internal error", from.id))?;
             let want = want.to_ascii_lowercase();
             for (to, lab) in outs {
-                if normalize_label(&Some(lab.clone().unwrap_or_default()))
-                    .as_deref()
+                if normalize_label(&Some(lab.clone().unwrap_or_default())).as_deref()
                     == Some(want.as_str())
                 {
                     return Ok(Some(to.clone()));
@@ -202,12 +214,8 @@ fn pick_next(
             ))
         }
         "guardrails" => {
-            let want = branch.ok_or_else(|| {
-                format!(
-                    "node {}: guardrails internal error",
-                    from.id
-                )
-            })?;
+            let want =
+                branch.ok_or_else(|| format!("node {}: guardrails internal error", from.id))?;
             let want = want.to_ascii_lowercase();
             for (to, lab) in outs {
                 if normalize_label(lab).as_deref() == Some(want.as_str()) {
@@ -220,7 +228,8 @@ fn pick_next(
             ))
         }
         "human_approval" | "humanapproval" | "user_approval" | "userapproval" => {
-            let want = branch.ok_or_else(|| format!("node {}: user approval internal error", from.id))?;
+            let want =
+                branch.ok_or_else(|| format!("node {}: user approval internal error", from.id))?;
             let want = want.to_ascii_lowercase();
             for (to, lab) in outs {
                 if normalize_label(lab).as_deref() == Some(want.as_str()) {
@@ -241,11 +250,7 @@ fn pick_next(
             }
             let unlabeled: Vec<_> = outs
                 .iter()
-                .filter(|(_, l)| {
-                    l.as_ref()
-                        .map(|s| s.trim().is_empty())
-                        .unwrap_or(true)
-                })
+                .filter(|(_, l)| l.as_ref().map(|s| s.trim().is_empty()).unwrap_or(true))
                 .collect();
             if unlabeled.len() == 1 {
                 return Ok(Some(unlabeled[0].0.clone()));
@@ -266,11 +271,7 @@ fn pick_next(
     }
 }
 
-fn prior_context_block(
-    spec: &FlowSpec,
-    node_id: &str,
-    outputs: &HashMap<String, Value>,
-) -> String {
+fn prior_context_block(spec: &FlowSpec, node_id: &str, outputs: &HashMap<String, Value>) -> String {
     let inc = incoming_map(spec);
     let Some(srcs) = inc.get(node_id) else {
         return String::new();
@@ -419,7 +420,9 @@ async fn run_legacy_topo(
         ordered_steps.push(json!({"id": node.id, "kind": "llm", "output": j}));
     }
 
-    Ok(FlowRunOutput { steps: ordered_steps })
+    Ok(FlowRunOutput {
+        steps: ordered_steps,
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -527,7 +530,9 @@ async fn run_interpreter(
                     "simulated": true,
                 });
                 outputs.insert(cur.clone(), out.clone());
-                ordered_steps.push(json!({"id": cur, "kind": "user_approval", "branch": branch, "output": out}));
+                ordered_steps.push(
+                    json!({"id": cur, "kind": "user_approval", "branch": branch, "output": out}),
+                );
                 cursor = pick_next(node, outs, Some(branch))?;
                 continue;
             }
@@ -540,10 +545,7 @@ async fn run_interpreter(
                 });
                 let cond = cel_bool(&node.condition_cel, &act, 0)?;
                 let branch = if cond { "true" } else { "false" };
-                flow_step_log(
-                    &flow_run_log,
-                    format!("[branch] if {cur} → {branch}"),
-                );
+                flow_step_log(&flow_run_log, format!("[branch] if {cur} → {branch}"));
                 cursor = pick_next(node, outs, Some(branch))?;
                 ordered_steps.push(json!({"id": cur, "kind": kind, "branch": branch}));
                 continue;
@@ -586,7 +588,8 @@ async fn run_interpreter(
                     format!("[branch] while {cur} → loop (iter {done})"),
                 );
                 cursor = pick_next(node, outs, Some("loop"))?;
-                ordered_steps.push(json!({"id": cur, "kind": "while", "branch": "loop", "iteration": done}));
+                ordered_steps
+                    .push(json!({"id": cur, "kind": "while", "branch": "loop", "iteration": done}));
                 continue;
             }
             "guardrails" => {
@@ -601,19 +604,12 @@ async fn run_interpreter(
                             node.id
                         ));
                     }
-                    outputs
-                        .get(sid)
-                        .map(value_to_string)
-                        .unwrap_or_default()
+                    outputs.get(sid).map(value_to_string).unwrap_or_default()
                 };
                 let mut pass = if let Some(ref layer) = safety {
                     let mut ok = true;
                     let checks: Vec<String> = if node.guardrail_checks.is_empty() {
-                        vec![
-                            "leak".into(),
-                            "injection".into(),
-                            "policy".into(),
-                        ]
+                        vec!["leak".into(), "injection".into(), "policy".into()]
                     } else {
                         node.guardrail_checks.clone()
                     };
@@ -633,16 +629,10 @@ async fn run_interpreter(
                                     break;
                                 }
                             }
-                            "policy"
-                            | "moderation"
-                            | "hallucination"
-                            | "nsfw" => {
+                            "policy" | "moderation" | "hallucination" | "nsfw" => {
                                 let violations = layer.policy().check(&text);
                                 if violations.iter().any(|v| {
-                                    matches!(
-                                        v.action,
-                                        crate::safety::policy::PolicyAction::Block
-                                    )
+                                    matches!(v.action, crate::safety::policy::PolicyAction::Block)
                                 }) {
                                     ok = false;
                                     break;
@@ -657,7 +647,9 @@ async fn run_interpreter(
                             "custom" => {
                                 let needle = node.guardrail_custom_substring.trim();
                                 if !needle.is_empty()
-                                    && text.to_ascii_lowercase().contains(&needle.to_ascii_lowercase())
+                                    && text
+                                        .to_ascii_lowercase()
+                                        .contains(&needle.to_ascii_lowercase())
                                 {
                                     ok = false;
                                     break;
@@ -699,7 +691,10 @@ async fn run_interpreter(
             "mcp" => {
                 let tool_id = node.mcp_tool_id.trim();
                 if tool_id.is_empty() {
-                    return Err(format!("node {}: mcp needs mcp_tool_id (server:tool)", node.id));
+                    return Err(format!(
+                        "node {}: mcp needs mcp_tool_id (server:tool)",
+                        node.id
+                    ));
                 }
                 let tpl_ctx = build_template_context(inputs, &outputs);
                 let args_raw = interpolate_context(&node.mcp_arguments_json, &tpl_ctx);
@@ -707,12 +702,18 @@ async fn run_interpreter(
                     json!({})
                 } else {
                     serde_json::from_str(&args_raw).map_err(|e| {
-                        format!("node {}: mcp_arguments_json must be JSON object: {e}", node.id)
+                        format!(
+                            "node {}: mcp_arguments_json must be JSON object: {e}",
+                            node.id
+                        )
                     })?
                 };
                 let mcp: Option<Arc<McpManager>> = extras.mcp.clone();
                 let Some(m) = mcp else {
-                    return Err(format!("node {}: MCP is not connected on this node", node.id));
+                    return Err(format!(
+                        "node {}: MCP is not connected on this node",
+                        node.id
+                    ));
                 };
                 let result = m
                     .call_tool(tool_id, args)
@@ -736,10 +737,7 @@ async fn run_interpreter(
                 ordered_steps.push(json!({"id": cur, "kind": "mcp", "output": out}));
                 flow_step_log(
                     &flow_run_log,
-                    format!(
-                        "[mcp] {cur} tool={tool_id} error={}",
-                        result.is_error
-                    ),
+                    format!("[mcp] {cur} tool={tool_id} error={}", result.is_error),
                 );
                 cursor = pick_next(node, outs, None)?;
                 continue;
@@ -747,12 +745,18 @@ async fn run_interpreter(
             "file_search" | "filesearch" => {
                 let coll = node.vector_collection.trim();
                 if coll.is_empty() {
-                    return Err(format!("node {}: file_search needs vector_collection", node.id));
+                    return Err(format!(
+                        "node {}: file_search needs vector_collection",
+                        node.id
+                    ));
                 }
                 let tpl_ctx = build_template_context(inputs, &outputs);
                 let q = interpolate_context(&node.vector_query_template, &tpl_ctx);
                 if q.trim().is_empty() {
-                    return Err(format!("node {}: file_search needs vector_query_template", node.id));
+                    return Err(format!(
+                        "node {}: file_search needs vector_query_template",
+                        node.id
+                    ));
                 }
                 let top_k = if node.vector_top_k == 0 {
                     10
@@ -805,7 +809,8 @@ async fn run_interpreter(
                 };
                 state_map.insert(key.to_string(), val.clone());
                 outputs.insert(cur.clone(), json!({ "state_key": key, "value": val }));
-                ordered_steps.push(json!({"id": cur, "kind": "set_state", "output": outputs.get(&cur)}));
+                ordered_steps
+                    .push(json!({"id": cur, "kind": "set_state", "output": outputs.get(&cur)}));
                 cursor = pick_next(node, outs, None)?;
                 continue;
             }
@@ -814,27 +819,27 @@ async fn run_interpreter(
                 let mode = node.transform_mode.to_ascii_lowercase();
                 let has_obj = !node.transform_object_json.trim().is_empty();
                 let has_expr = !node.transform_expressions_json.trim().is_empty();
-                let use_object = mode == "object" || (has_obj && mode != "copy" && mode != "expressions");
-                let use_expr = mode == "expressions" || (has_expr && mode != "object" && !use_object);
+                let use_object =
+                    mode == "object" || (has_obj && mode != "copy" && mode != "expressions");
+                let use_expr =
+                    mode == "expressions" || (has_expr && mode != "object" && !use_object);
 
                 if use_object {
                     let tpl_ctx = build_template_context(inputs, &outputs);
-                    let raw_obj =
-                        interpolate_context(&node.transform_object_json.trim(), &tpl_ctx);
-                    let map_val: Value = serde_json::from_str(&raw_obj).map_err(|e| {
-                        format!("node {}: transform_object_json: {e}", node.id)
-                    })?;
+                    let raw_obj = interpolate_context(&node.transform_object_json.trim(), &tpl_ctx);
+                    let map_val: Value = serde_json::from_str(&raw_obj)
+                        .map_err(|e| format!("node {}: transform_object_json: {e}", node.id))?;
                     let obj = map_val.as_object().ok_or_else(|| {
-                        format!("node {}: transform_object_json must be a JSON object", node.id)
+                        format!(
+                            "node {}: transform_object_json must be a JSON object",
+                            node.id
+                        )
                     })?;
                     let keys: Vec<String> = obj.keys().cloned().collect();
                     for (k, v) in obj {
                         state_map.insert(k.clone(), v.clone());
                     }
-                    outputs.insert(
-                        cur.clone(),
-                        json!({ "mode": "object", "keys": keys }),
-                    );
+                    outputs.insert(cur.clone(), json!({ "mode": "object", "keys": keys }));
                 } else if use_expr {
                     let rows: Vec<Value> = serde_json::from_str(&node.transform_expressions_json)
                         .map_err(|e| {
@@ -882,24 +887,23 @@ async fn run_interpreter(
                             node.id
                         ));
                     }
-                    let v = outputs
-                        .get(from_id)
-                        .cloned()
-                        .unwrap_or(Value::Null);
+                    let v = outputs.get(from_id).cloned().unwrap_or(Value::Null);
                     state_map.insert(sk.to_string(), v.clone());
                     outputs.insert(
                         cur.clone(),
                         json!({ "copied_from": from_id, "state_key": sk, "mode": "copy" }),
                     );
                 }
-                ordered_steps.push(json!({"id": cur, "kind": "transform", "output": outputs.get(&cur)}));
+                ordered_steps
+                    .push(json!({"id": cur, "kind": "transform", "output": outputs.get(&cur)}));
                 cursor = pick_next(node, outs, None)?;
                 continue;
             }
             "crew" => {
-                let crew = node.crew_spec.as_ref().ok_or_else(|| {
-                    format!("flow node {}: crew requires crew_spec", node.id)
-                })?;
+                let crew = node
+                    .crew_spec
+                    .as_ref()
+                    .ok_or_else(|| format!("flow node {}: crew requires crew_spec", node.id))?;
                 crew.validate()?;
                 let merged_inputs = if node.prompt.is_empty() {
                     inputs.clone()
@@ -959,7 +963,8 @@ async fn run_interpreter(
                     allowed_tools: allowed,
                     context_window: 4096,
                 };
-                let budget = crate::agent::budget::BudgetTracker::new(50.0, 500.0, 2000.0, 10_000.0);
+                let budget =
+                    crate::agent::budget::BudgetTracker::new(50.0, 500.0, 2000.0, 10_000.0);
                 let mut rt = AgentRuntime::new(
                     config,
                     executor.clone(),
@@ -1064,7 +1069,10 @@ async fn run_interpreter(
                 ordered_steps.push(json!({"id": cur, "kind": "classify", "output": j}));
                 flow_step_log(
                     &flow_run_log,
-                    format!("[classify] {cur} → {}", label.chars().take(80).collect::<String>()),
+                    format!(
+                        "[classify] {cur} → {}",
+                        label.chars().take(80).collect::<String>()
+                    ),
                 );
                 cursor = pick_next(node, outs, None)?;
                 continue;
@@ -1213,7 +1221,10 @@ pub fn validate_interpreter(spec: &FlowSpec) -> Result<(), String> {
             }
             "end" => {
                 if !outs.is_empty() {
-                    return Err(format!("node {}: end node must have no outgoing edges", n.id));
+                    return Err(format!(
+                        "node {}: end node must have no outgoing edges",
+                        n.id
+                    ));
                 }
             }
             _ => {
@@ -1221,15 +1232,11 @@ pub fn validate_interpreter(spec: &FlowSpec) -> Result<(), String> {
                 if outs.len() > 1 {
                     let defaults: Vec<_> = outs
                         .iter()
-                        .filter(|(_, l)| {
-                            normalize_label(l).as_deref() == Some("default")
-                        })
+                        .filter(|(_, l)| normalize_label(l).as_deref() == Some("default"))
                         .collect();
                     let unlabeled: Vec<_> = outs
                         .iter()
-                        .filter(|(_, l)| {
-                            l.as_ref().map(|s| s.trim().is_empty()).unwrap_or(true)
-                        })
+                        .filter(|(_, l)| l.as_ref().map(|s| s.trim().is_empty()).unwrap_or(true))
                         .collect();
                     if defaults.len() != 1 && unlabeled.len() != 1 {
                         return Err(format!(
@@ -1255,8 +1262,7 @@ pub fn validate_interpreter(spec: &FlowSpec) -> Result<(), String> {
                         n.id, sid
                     ));
                 }
-            } else if !n.source_node_id.trim().is_empty()
-                && !ids.contains(n.source_node_id.trim())
+            } else if !n.source_node_id.trim().is_empty() && !ids.contains(n.source_node_id.trim())
             {
                 return Err(format!(
                     "node {}: guardrails source_node_id '{}' not found",
@@ -1285,10 +1291,7 @@ pub fn validate_interpreter(spec: &FlowSpec) -> Result<(), String> {
 
     // Reachability from start
     let start_id = starts[0].id.clone();
-    let so = out
-        .get(&start_id)
-        .map(|v| v.len())
-        .unwrap_or(0);
+    let so = out.get(&start_id).map(|v| v.len()).unwrap_or(0);
     if so != 1 {
         return Err(format!(
             "start node must have exactly one outgoing edge, found {so}"

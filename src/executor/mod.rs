@@ -322,15 +322,15 @@ impl TaskExecutor {
             };
 
             return Ok(TaskData::Inference(InferenceResult {
-text: response.text,
-                 tokens_generated: response.tokens_generated,
-                 tokens_per_second: response.tokens_per_second,
-                 finish_reason,
-                 ttfb_ms: 0,
-             }));
-         }
+                text: response.text,
+                tokens_generated: response.tokens_generated,
+                tokens_per_second: response.tokens_per_second,
+                finish_reason,
+                ttfb_ms: 0,
+            }));
+        }
 
-         // --- Direct GGUF engine fallback ---
+        // --- Direct GGUF engine fallback ---
         let actual_path = self.find_gguf_model(&task.model)?;
 
         tracing::info!(
@@ -374,6 +374,7 @@ text: response.text,
             tokens_generated: response.tokens_generated,
             tokens_per_second: response.tokens_per_second,
             finish_reason,
+            ttfb_ms: 0,
         }))
     }
 
@@ -561,6 +562,7 @@ text: response.text,
                 tokens_generated: response.tokens_generated,
                 tokens_per_second: response.tokens_per_second,
                 finish_reason,
+                ttfb_ms: 0,
             }));
         }
 
@@ -612,6 +614,7 @@ text: response.text,
             tokens_generated: response.tokens_generated,
             tokens_per_second: response.tokens_per_second,
             finish_reason,
+            ttfb_ms: 0,
         }))
     }
 
@@ -705,12 +708,12 @@ text: response.text,
             .map_err(|e| ExecutorError::WebError(e.to_string()))?
             .to_vec();
 
-Ok(TaskData::WebFetch(WebFetchResult {
-             status,
-             headers,
-             body,
-             ttfb_ms,
-         }))
+        Ok(TaskData::WebFetch(WebFetchResult {
+            status,
+            headers,
+            body,
+            ttfb_ms,
+        }))
     }
 
     /// Execute web search locally.
@@ -927,9 +930,9 @@ Ok(TaskData::WebFetch(WebFetchResult {
                 text: response.text,
                 tokens_generated: response.tokens_generated,
                 tokens_per_second: response.tokens_per_second,
-finish_reason,
-                 ttfb_ms: 0,
-             });
+                finish_reason,
+                ttfb_ms: 0,
+            });
         }
 
         // --- Direct GGUF streaming fallback ---
@@ -969,6 +972,7 @@ finish_reason,
             tokens_generated: response.tokens_generated,
             tokens_per_second: response.tokens_per_second,
             finish_reason,
+            ttfb_ms: 0,
         })
     }
 }

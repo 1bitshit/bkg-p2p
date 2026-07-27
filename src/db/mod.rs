@@ -46,6 +46,9 @@ pub enum DatabaseError {
     #[error("Deserialization error: {0}")]
     Deserialization(String),
 
+    #[error("MessagePack error: {0}")]
+    MsgPack(#[from] rmp_serde::decode::Error),
+
     #[error("Not found: {0}")]
     NotFound(String),
 }
@@ -74,12 +77,12 @@ impl Database {
             let _ = write_txn.open_table(WALLET)?;
             let _ = write_txn.open_table(AGENTS)?;
             let _ = write_txn.open_table(TOOLS)?;
-        let _ = write_txn.open_table(SETTINGS)?;
-        let _ = write_txn.open_table(RUNS)?;
-        let _ = write_txn.open_table(RUN_EVENTS)?;
-        let _ = write_txn.open_table(REPUTATION)?;
-    }
-    write_txn.commit()?;
+            let _ = write_txn.open_table(SETTINGS)?;
+            let _ = write_txn.open_table(RUNS)?;
+            let _ = write_txn.open_table(RUN_EVENTS)?;
+            let _ = write_txn.open_table(REPUTATION)?;
+        }
+        write_txn.commit()?;
 
         Ok(Self { db: Arc::new(db) })
     }
@@ -233,51 +236,51 @@ impl Database {
         Ok(names)
     }
 
-// =========================================================================
-// Runs (Phase 1 run spine)
-// =========================================================================
+    // =========================================================================
+    // Runs (Phase 1 run spine)
+    // =========================================================================
 
-/// Store or update a `RunRecord`.
-pub fn store_run<T: Serialize>(
-    &self,
-    run_id: &str,
-    record: &T,
-) -> Result<(), DatabaseError> {
-    let bytes = rmp_serde::to_vec(record).map_err(|e| DatabaseError::Serialization(e.to_string()))?;
-    let write_txn = self.db.begin_write()?;
-    {
-        let mut table = write_txn.open_table(RUNS)?;
-        table.insert(run_id, bytes.as_slice())?;
-    }
-    write_txn.commit()?;
-    Ok(())
-}
-
-/// Get a run record by id.
-pub fn get_run<T: DeserializeOwned>(&self, run_id: &str) -> Result<Option<T>, DatabaseError> {
-    let read_txn = self.db.begin_read()?;
-    let table = read_txn.open_table(RUNS)?;
-    match table.get(run_id)? {
-        Some(bytes) => {
-            let value: T = rmp_serde::from_slice(bytes.value())
-                .map_err(|e| DatabaseError::Deserialization(e.to_string()))?;
-            Ok(Some(value))
+    /// Store or update a `RunRecord`.
+    pub fn store_run<T: Serialize>(&self, run_id: &str, record: &T) -> Result<(), DatabaseError> {
+        let bytes =
+            rmp_serde::to_vec(record).map_err(|e| DatabaseError::Serialization(e.to_string()))?;
+        let write_txn = self.db.begin_write()?;
+        {
+            let mut table = write_txn.open_table(RUNS)?;
+            table.insert(run_id, bytes.as_slice())?;
         }
-        None => Ok(None),
+        write_txn.commit()?;
+        Ok(())
     }
-}
 
-/// List all run IDs, newest-first by creation timestamp encoded in the value.
-pub fn list_run_ids(&self) -> Result<Vec<String>, DatabaseError> {
-    let read_txn = self.db.begin_read()?;
-    let table = read_txn.open_table(RUNS)?;
-    let mut ids: Vec<String> = table.iter()?.map(|entry| entry.map(|(k, _)| k.value().to_string())).collect::<Result<_, _>>()?;
-    ids.sort();
-    ids.reverse();
-    Ok(ids)
-}
+    /// Get a run record by id.
+    pub fn get_run<T: DeserializeOwned>(&self, run_id: &str) -> Result<Option<T>, DatabaseError> {
+        let read_txn = self.db.begin_read()?;
+        let table = read_txn.open_table(RUNS)?;
+        match table.get(run_id)? {
+            Some(bytes) => {
+                let value: T = rmp_serde::from_slice(bytes.value())
+                    .map_err(|e| DatabaseError::Deserialization(e.to_string()))?;
+                Ok(Some(value))
+            }
+            None => Ok(None),
+        }
+    }
 
-/// Append an event to the `run_events` stream. The composite key
+    /// List all run IDs, newest-first by creation timestamp encoded in the value.
+    pub fn list_run_ids(&self) -> Result<Vec<String>, DatabaseError> {
+        let read_txn = self.db.begin_read()?;
+        let table = read_txn.open_table(RUNS)?;
+        let mut ids: Vec<String> = table
+            .iter()?
+            .map(|entry| entry.map(|(k, _)| k.value().to_string()))
+            .collect::<Result<_, _>>()?;
+        ids.sort();
+        ids.reverse();
+        Ok(ids)
+    }
+
+    /// Append an event to the `run_events` stream. The composite key
     /// `"{run_id}\0{seq}"` keeps events for a given run lexicographically adjacent
     /// and ordered by `seq`.
     pub fn append_run_event(
@@ -286,38 +289,39 @@ pub fn list_run_ids(&self) -> Result<Vec<String>, DatabaseError> {
         event: &crate::run::RunEvent,
     ) -> Result<(), DatabaseError> {
         let seq = event.seq;
-    let key = format!("{run_id}\0{seq:020}");
-    let bytes = rmp_serde::to_vec(event).map_err(|e| DatabaseError::Serialization(e.to_string()))?;
-    let write_txn = self.db.begin_write()?;
-    {
-        let mut table = write_txn.open_table(RUN_EVENTS)?;
-        table.insert(key.as_str(), bytes.as_slice())?;
+        let key = format!("{run_id}\0{seq:020}");
+        let bytes =
+            rmp_serde::to_vec(event).map_err(|e| DatabaseError::Serialization(e.to_string()))?;
+        let write_txn = self.db.begin_write()?;
+        {
+            let mut table = write_txn.open_table(RUN_EVENTS)?;
+            table.insert(key.as_str(), bytes.as_slice())?;
+        }
+        write_txn.commit()?;
+        Ok(())
     }
-    write_txn.commit()?;
-    Ok(())
-}
 
-/// List events for a given run, in ascending sequence order.
-pub fn list_run_events(
-    &self,
-    run_id: &str,
-) -> Result<Vec<crate::run::RunEvent>, DatabaseError> {
-    let read_txn = self.db.begin_read()?;
-    let table = read_txn.open_table(RUN_EVENTS)?;
-    let prefix = format!("{run_id}\0");
-    let mut events: Vec<crate::run::RunEvent> = table
-        .iter()?
-        .filter_map(|entry| entry.ok())
-        .filter(|(k, _)| k.value().starts_with(&prefix))
-        .map(|(_, v)| rmp_serde::from_slice(v.value()))
-        .collect::<Result<_, _>>()?;
-    events.sort_by_key(|e| e.seq);
-    Ok(events)
-}
+    /// List events for a given run, in ascending sequence order.
+    pub fn list_run_events(
+        &self,
+        run_id: &str,
+    ) -> Result<Vec<crate::run::RunEvent>, DatabaseError> {
+        let read_txn = self.db.begin_read()?;
+        let table = read_txn.open_table(RUN_EVENTS)?;
+        let prefix = format!("{run_id}\0");
+        let mut events: Vec<crate::run::RunEvent> = table
+            .iter()?
+            .filter_map(|entry| entry.ok())
+            .filter(|(k, _)| k.value().starts_with(&prefix))
+            .map(|(_, v)| rmp_serde::from_slice(v.value()))
+            .collect::<Result<_, _>>()?;
+        events.sort_by_key(|e| e.seq);
+        Ok(events)
+    }
 
-// =========================================================================
-// Settings
-// =========================================================================
+    // =========================================================================
+    // Settings
+    // =========================================================================
 
     /// Store a setting.
     pub fn store_setting<T: Serialize>(&self, key: &str, value: &T) -> Result<(), DatabaseError> {
@@ -344,70 +348,70 @@ pub fn list_run_events(
                     .map_err(|e| DatabaseError::Deserialization(e.to_string()))?;
                 Ok(Some(value))
             }
-None => Ok(None),
-    }
-}
-
-// =========================================================================
-// Reputation
-// =========================================================================
-
-/// Store a reputation profile.
-pub fn store_reputation<T: Serialize>(
-    &self,
-    peer_id: &str,
-    profile: &T,
-) -> Result<(), DatabaseError> {
-    let bytes =
-        rmp_serde::to_vec(profile).map_err(|e| DatabaseError::Serialization(e.to_string()))?;
-    let write_txn = self.db.begin_write()?;
-    {
-        let mut table = write_txn.open_table(REPUTATION)?;
-        table.insert(peer_id, bytes.as_slice())?;
-    }
-    write_txn.commit()?;
-    Ok(())
-}
-
-/// Get a reputation profile by peer_id.
-pub fn get_reputation<T: DeserializeOwned>(
-    &self,
-    peer_id: &str,
-) -> Result<Option<T>, DatabaseError> {
-    let read_txn = self.db.begin_read()?;
-    let table = read_txn.open_table(REPUTATION)?;
-    match table.get(peer_id)? {
-        Some(bytes) => {
-            let value: T =
-                rmp_serde::from_slice(bytes.value())
-                    .map_err(|e| DatabaseError::Deserialization(e.to_string()))?;
-            Ok(Some(value))
+            None => Ok(None),
         }
-        None => Ok(None),
     }
-}
 
-/// List all peer IDs with stored reputation profiles.
-pub fn list_reputation_ids(&self) -> Result<Vec<String>, DatabaseError> {
-    let read_txn = self.db.begin_read()?;
-    let table = read_txn.open_table(REPUTATION)?;
-    let mut ids = Vec::new();
-    for entry in table.iter()? {
-        let (key, _) = entry?;
-        ids.push(key.value().to_string());
-    }
-    Ok(ids)
-}
+    // =========================================================================
+    // Reputation
+    // =========================================================================
 
-/// Delete a reputation profile.
-pub fn delete_reputation(&self, peer_id: &str) -> Result<(), DatabaseError> {
-    let write_txn = self.db.begin_write()?;
-    {
-        let mut table = write_txn.open_table(REPUTATION)?;
-        table.remove(peer_id)?;
+    /// Store a reputation profile.
+    pub fn store_reputation<T: Serialize>(
+        &self,
+        peer_id: &str,
+        profile: &T,
+    ) -> Result<(), DatabaseError> {
+        let bytes =
+            rmp_serde::to_vec(profile).map_err(|e| DatabaseError::Serialization(e.to_string()))?;
+        let write_txn = self.db.begin_write()?;
+        {
+            let mut table = write_txn.open_table(REPUTATION)?;
+            table.insert(peer_id, bytes.as_slice())?;
+        }
+        write_txn.commit()?;
+        Ok(())
     }
-    write_txn.commit()?;
-    Ok(())
+
+    /// Get a reputation profile by peer_id.
+    pub fn get_reputation<T: DeserializeOwned>(
+        &self,
+        peer_id: &str,
+    ) -> Result<Option<T>, DatabaseError> {
+        let read_txn = self.db.begin_read()?;
+        let table = read_txn.open_table(REPUTATION)?;
+        match table.get(peer_id)? {
+            Some(bytes) => {
+                let value: T = rmp_serde::from_slice(bytes.value())
+                    .map_err(|e| DatabaseError::Deserialization(e.to_string()))?;
+                Ok(Some(value))
+            }
+            None => Ok(None),
+        }
+    }
+
+    /// List all peer IDs with stored reputation profiles.
+    pub fn list_reputation_ids(&self) -> Result<Vec<String>, DatabaseError> {
+        let read_txn = self.db.begin_read()?;
+        let table = read_txn.open_table(REPUTATION)?;
+        let mut ids = Vec::new();
+        for entry in table.iter()? {
+            let (key, _) = entry?;
+            ids.push(key.value().to_string());
+        }
+        Ok(ids)
+    }
+
+    /// Delete a reputation profile.
+    pub fn delete_reputation(&self, peer_id: &str) -> Result<(), DatabaseError> {
+        let write_txn = self.db.begin_write()?;
+        {
+            let mut table = write_txn.open_table(REPUTATION)?;
+            table.remove(peer_id)?;
+        }
+        write_txn.commit()?;
+        Ok(())
+    }
 }
 
 impl Clone for Database {

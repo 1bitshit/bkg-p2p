@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use libp2p::PeerId;
+use serde::{Deserialize, Serialize};
 
 /// Permission for P2P operations
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -76,7 +76,8 @@ impl AccessControlList {
     }
 
     pub fn get_permissions(&self, peer_id: &PeerId) -> Option<&PermissionSet> {
-        self.entries.iter()
+        self.entries
+            .iter()
             .find(|e| &e.peer_id == peer_id)
             .map(|e| &e.permissions)
     }

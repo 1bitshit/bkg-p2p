@@ -212,9 +212,9 @@ pub struct WebState {
     pub wallet: Option<Arc<crate::wallet::Wallet>>,
     /// Vector store for semantic search / memory.
     pub vector_store: Option<Arc<crate::vector::VectorStore>>,
-/// When true (`bkg-peer serve -V`), agentic tool calls log args + results to stderr (see unified loop).
-pub verbose_agentic_io: bool,
-/// Persistent redb database handle; `None` when no data dir is configured.
+    /// When true (`bkg-peer serve -V`), agentic tool calls log args + results to stderr (see unified loop).
+    pub verbose_agentic_io: bool,
+    /// Persistent redb database handle; `None` when no data dir is configured.
     pub database: Option<Arc<crate::db::Database>>,
     /// Actual P2P listen multiaddresses (populated from swarm after binding).
     pub listen_addresses: Arc<tokio::sync::RwLock<Vec<String>>>,
@@ -408,7 +408,10 @@ fn api_router() -> Router<Arc<WebState>> {
     Router::new()
         .merge(api_tasks_router())
         .merge(api_workflows_router())
-        .route("/agents/library", get(api_agent_library_list).post(api_agent_library_post))
+        .route(
+            "/agents/library",
+            get(api_agent_library_list).post(api_agent_library_post),
+        )
         .route("/agents/library/:id", delete(api_agent_library_delete))
         .route("/status", get(api_status))
         .route("/onboarding", get(api_onboarding))
@@ -439,13 +442,13 @@ fn api_router() -> Router<Arc<WebState>> {
         .route("/providers", get(api_list_providers))
         .route("/providers/config", get(api_get_provider_config))
         .route("/providers/config", post(api_set_provider_config))
- .route("/nodes/:id", get(api_node_detail))
- .route("/runs", get(api_runs_list))
- .route("/runs/:id", get(api_run_get))
- .route("/runs/:id/events", get(api_run_events))
- .route("/swarm/agents", get(api_swarm_agents))
- .route("/swarm/topology", get(api_swarm_topology))
- .route("/swarm/timeline", get(api_swarm_timeline))
+        .route("/nodes/:id", get(api_node_detail))
+        .route("/runs", get(api_runs_list))
+        .route("/runs/:id", get(api_run_get))
+        .route("/runs/:id/events", get(api_run_events))
+        .route("/swarm/agents", get(api_swarm_agents))
+        .route("/swarm/topology", get(api_swarm_topology))
+        .route("/swarm/timeline", get(api_swarm_timeline))
         .route(
             "/inference/settings",
             get(api_inference_settings_get).put(api_inference_settings_put),
@@ -474,10 +477,10 @@ fn api_router() -> Router<Arc<WebState>> {
         .route("/tools/execute", post(api_tool_execute))
         .route("/tools/:name", get(api_tool_detail))
         .route("/a2a/peers", get(api_a2a_peers))
-         .route("/metrics", get(api_metrics))
-         .route("/approvals", get(api_approvals_list))
-         .route("/approvals/:id/approve", post(api_approvals_approve))
-         .route("/approvals/:id/reject", post(api_approvals_reject))
+        .route("/metrics", get(api_metrics))
+        .route("/approvals", get(api_approvals_list))
+        .route("/approvals/:id/approve", post(api_approvals_approve))
+        .route("/approvals/:id/reject", post(api_approvals_reject))
 }
 
 /// Create the web router.
@@ -548,7 +551,7 @@ pub fn create_web_state(
         channel_registry: None,
         wallet: None,
         vector_store: Some(crate::vector::get_or_init_vector_store()),
-verbose_agentic_io: false,
+        verbose_agentic_io: false,
         database: None,
         metrics: None,
         hitl_store: Arc::new(crate::hitl::HitlStore::new()),
@@ -603,7 +606,7 @@ pub fn create_web_state_with_channels(
         channel_registry: None,
         wallet: None,
         vector_store: Some(crate::vector::get_or_init_vector_store()),
-verbose_agentic_io: false,
+        verbose_agentic_io: false,
         database: None,
         metrics: None,
         hitl_store: Arc::new(crate::hitl::HitlStore::new()),
@@ -657,7 +660,7 @@ pub fn create_web_state_with_inference(
         channel_registry: None,
         wallet: None,
         vector_store: Some(crate::vector::get_or_init_vector_store()),
-verbose_agentic_io: false,
+        verbose_agentic_io: false,
         database: None,
         metrics: None,
         hitl_store: Arc::new(crate::hitl::HitlStore::new()),
@@ -711,7 +714,7 @@ pub fn create_web_state_with_swarm(
         channel_registry: None,
         wallet: None,
         vector_store: Some(crate::vector::get_or_init_vector_store()),
-verbose_agentic_io: false,
+        verbose_agentic_io: false,
         database: None,
         metrics: None,
         hitl_store: Arc::new(crate::hitl::HitlStore::new()),
@@ -983,7 +986,9 @@ async fn api_agent_library_post(
         }
         let to_save = user.clone();
         drop(user);
-        if let Err(e) = crate::agent_library::save_user_entries(&state.agent_library_path, &to_save).await {
+        if let Err(e) =
+            crate::agent_library::save_user_entries(&state.agent_library_path, &to_save).await
+        {
             tracing::warn!("agent_library save: {}", e);
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1019,7 +1024,9 @@ async fn api_agent_library_delete(
     }
     let to_save = user.clone();
     drop(user);
-    if let Err(e) = crate::agent_library::save_user_entries(&state.agent_library_path, &to_save).await {
+    if let Err(e) =
+        crate::agent_library::save_user_entries(&state.agent_library_path, &to_save).await
+    {
         tracing::warn!("agent_library save: {}", e);
         return Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -1121,128 +1128,128 @@ async fn api_crew_stream(
 
 #[derive(Serialize)]
 struct RunsResponse {
- pub runs: Vec<crate::run::RunRecord>,
+    pub runs: Vec<crate::run::RunRecord>,
 }
 
 #[derive(Serialize)]
 struct RunEventsResponse {
- pub run_id: String,
- pub events: Vec<crate::run::RunEvent>,
+    pub run_id: String,
+    pub events: Vec<crate::run::RunEvent>,
 }
 
 async fn api_runs_list(State(state): State<Arc<WebState>>) -> Json<RunsResponse> {
- let ids = match state.database.as_ref() {
- Some(db) => db.list_run_ids().unwrap_or_default(),
- None => Vec::new(),
- };
- let mut runs = Vec::new();
- for id in ids {
- if let Ok(Some(rec)) = state
- .database
- .as_ref()
- .unwrap()
- .get_run::<crate::run::RunRecord>(&id)
- {
- runs.push(rec);
- }
- }
- Json(RunsResponse { runs })
+    let ids = match state.database.as_ref() {
+        Some(db) => db.list_run_ids().unwrap_or_default(),
+        None => Vec::new(),
+    };
+    let mut runs = Vec::new();
+    for id in ids {
+        if let Ok(Some(rec)) = state
+            .database
+            .as_ref()
+            .unwrap()
+            .get_run::<crate::run::RunRecord>(&id)
+        {
+            runs.push(rec);
+        }
+    }
+    Json(RunsResponse { runs })
 }
 
 async fn api_run_get(
- State(state): State<Arc<WebState>>,
- Path(run_id): Path<String>,
+    State(state): State<Arc<WebState>>,
+    Path(run_id): Path<String>,
 ) -> Result<Json<crate::run::RunRecord>, StatusCode> {
- match state.database.as_ref() {
- Some(db) => match db.get_run::<crate::run::RunRecord>(&run_id) {
- Ok(Some(rec)) => Ok(Json(rec)),
- _ => Err(StatusCode::NOT_FOUND),
- },
- None => Err(StatusCode::NOT_FOUND),
- }
+    match state.database.as_ref() {
+        Some(db) => match db.get_run::<crate::run::RunRecord>(&run_id) {
+            Ok(Some(rec)) => Ok(Json(rec)),
+            _ => Err(StatusCode::NOT_FOUND),
+        },
+        None => Err(StatusCode::NOT_FOUND),
+    }
 }
 
 async fn api_run_events(
- State(state): State<Arc<WebState>>,
- Path(run_id): Path<String>,
+    State(state): State<Arc<WebState>>,
+    Path(run_id): Path<String>,
 ) -> Result<Json<RunEventsResponse>, StatusCode> {
- match state.database.as_ref() {
- Some(db) => {
- let events = db.list_run_events(&run_id).unwrap_or_default();
- Ok(Json(RunEventsResponse { run_id, events }))
- }
-None => Err(StatusCode::NOT_FOUND),
-  }
- }
+    match state.database.as_ref() {
+        Some(db) => {
+            let events = db.list_run_events(&run_id).unwrap_or_default();
+            Ok(Json(RunEventsResponse { run_id, events }))
+        }
+        None => Err(StatusCode::NOT_FOUND),
+    }
+}
 
- #[derive(Serialize)]
- struct MetricsResponse {
-  counters: std::collections::HashMap<String, u64>,
-  gauges: std::collections::HashMap<String, f64>,
-  histograms: std::collections::HashMap<String, Vec<f64>>,
- }
+#[derive(Serialize)]
+struct MetricsResponse {
+    counters: std::collections::HashMap<String, u64>,
+    gauges: std::collections::HashMap<String, f64>,
+    histograms: std::collections::HashMap<String, Vec<f64>>,
+}
 
- async fn api_metrics(State(state): State<Arc<WebState>>) -> Json<MetricsResponse> {
-  match state.metrics.as_ref() {
-   Some(m) => {
-    let snap = m.snapshot().await;
-    Json(MetricsResponse {
-     counters: snap.counters,
-     gauges: snap.gauges,
-     histograms: snap.histograms,
-    })
-   }
-   None => Json(MetricsResponse {
-    counters: std::collections::HashMap::new(),
-    gauges: std::collections::HashMap::new(),
-    histograms: std::collections::HashMap::new(),
-   }),
-  }
- }
+async fn api_metrics(State(state): State<Arc<WebState>>) -> Json<MetricsResponse> {
+    match state.metrics.as_ref() {
+        Some(m) => {
+            let snap = m.snapshot().await;
+            Json(MetricsResponse {
+                counters: snap.counters,
+                gauges: snap.gauges,
+                histograms: snap.histograms,
+            })
+        }
+        None => Json(MetricsResponse {
+            counters: std::collections::HashMap::new(),
+            gauges: std::collections::HashMap::new(),
+            histograms: std::collections::HashMap::new(),
+        }),
+    }
+}
 
- #[derive(Serialize)]
- struct ApprovalsResponse {
-  approvals: Vec<crate::hitl::HitlRequest>,
- }
+#[derive(Serialize)]
+struct ApprovalsResponse {
+    approvals: Vec<crate::hitl::HitlRequest>,
+}
 
- #[derive(Deserialize)]
- struct ApproveRequest {
-  by: String,
- }
+#[derive(Deserialize)]
+struct ApproveRequest {
+    by: String,
+}
 
- #[derive(Deserialize)]
- struct RejectRequest {
-  by: String,
- }
+#[derive(Deserialize)]
+struct RejectRequest {
+    by: String,
+}
 
- async fn api_approvals_list(State(state): State<Arc<WebState>>) -> Json<ApprovalsResponse> {
-  let approvals = state.hitl_store.list(None).await;
-  Json(ApprovalsResponse { approvals })
- }
+async fn api_approvals_list(State(state): State<Arc<WebState>>) -> Json<ApprovalsResponse> {
+    let approvals = state.hitl_store.list(None).await;
+    Json(ApprovalsResponse { approvals })
+}
 
- async fn api_approvals_approve(
-  State(state): State<Arc<WebState>>,
-  Path(id): Path<String>,
-  Json(body): Json<ApproveRequest>,
- ) -> Result<Json<serde_json::Value>, StatusCode> {
-  match state.hitl_store.approve(&id, &body.by).await {
-   Ok(_) => Ok(Json(serde_json::json!({"id": id, "status": "approved"}))),
-   Err(e) => Err(StatusCode::BAD_REQUEST),
-  }
- }
+async fn api_approvals_approve(
+    State(state): State<Arc<WebState>>,
+    Path(id): Path<String>,
+    Json(body): Json<ApproveRequest>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    match state.hitl_store.approve(&id, &body.by).await {
+        Ok(_) => Ok(Json(serde_json::json!({"id": id, "status": "approved"}))),
+        Err(e) => Err(StatusCode::BAD_REQUEST),
+    }
+}
 
- async fn api_approvals_reject(
-  State(state): State<Arc<WebState>>,
-  Path(id): Path<String>,
-  Json(body): Json<RejectRequest>,
- ) -> Result<Json<serde_json::Value>, StatusCode> {
-  match state.hitl_store.reject(&id, &body.by).await {
-   Ok(_) => Ok(Json(serde_json::json!({"id": id, "status": "rejected"}))),
-   Err(e) => Err(StatusCode::BAD_REQUEST),
-  }
- }
+async fn api_approvals_reject(
+    State(state): State<Arc<WebState>>,
+    Path(id): Path<String>,
+    Json(body): Json<RejectRequest>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    match state.hitl_store.reject(&id, &body.by).await {
+        Ok(_) => Ok(Json(serde_json::json!({"id": id, "status": "rejected"}))),
+        Err(e) => Err(StatusCode::BAD_REQUEST),
+    }
+}
 
- async fn api_status(State(state): State<Arc<WebState>>) -> Json<StatusResponse> {
+async fn api_status(State(state): State<Arc<WebState>>) -> Json<StatusResponse> {
     let resource_state = state.resource_monitor.current_state().await;
     let balance = from_micro(*state.wallet_balance.read().await);
     let connected_peers = state.connected_peers.read().await.len();
@@ -1271,9 +1278,7 @@ struct MultiaddrsResponse {
     multiaddrs: Vec<String>,
 }
 
-async fn api_network_multiaddrs(
-    State(state): State<Arc<WebState>>,
-) -> Json<MultiaddrsResponse> {
+async fn api_network_multiaddrs(State(state): State<Arc<WebState>>) -> Json<MultiaddrsResponse> {
     let peer_id = state.local_peer_id.to_string();
     let addrs = state.listen_addresses.read().await.clone();
     // Append /p2p/<peer_id> to each address so they're shareable
@@ -1405,9 +1410,10 @@ async fn api_skills_meta(State(state): State<Arc<WebState>>) -> Json<SkillsMetaR
         skills_dir: state.skills_dir.display().to_string(),
         config_path: state.config_path.display().to_string(),
         registry_attached: state.skills.is_some(),
-scan_cli: "bkg-p2p skill scan",
-list_cli: "bkg-p2p skill list",
-directory_toml_snippet: "# Optional — default is ~/.bkg-p2p/skills\n[skills]\ndirectory = \"/path/to/skills\"\n",
+        scan_cli: "bkg-p2p skill scan",
+        list_cli: "bkg-p2p skill list",
+        directory_toml_snippet:
+            "# Optional — default is ~/.bkg-p2p/skills\n[skills]\ndirectory = \"/path/to/skills\"\n",
     })
 }
 
@@ -1863,13 +1869,7 @@ impl crate::agent::unified_loop::AgenticProgressSink for AgenticTaskProgressSink
         AgenticTaskProgressSink::record_tool_step(self, line, tokens).await;
     }
 
-    async fn record_tool_call(
-        &self,
-        tool_name: &str,
-        status: &str,
-        args: &str,
-        result: &str,
-    ) {
+    async fn record_tool_call(&self, tool_name: &str, status: &str, args: &str, result: &str) {
         let _ = self.ws_tx.send(serde_json::json!({
             "type": "task_tool_call",
             "task_id": self.task_id,
@@ -2472,9 +2472,7 @@ struct SessionListEntry {
     last_message: String,
 }
 
-async fn api_list_sessions(
-    State(state): State<Arc<WebState>>,
-) -> Json<Vec<SessionListEntry>> {
+async fn api_list_sessions(State(state): State<Arc<WebState>>) -> Json<Vec<SessionListEntry>> {
     // Prefer the persistent session store.
     if let Some(ref store) = state.session_store {
         match store.list_sessions() {
@@ -2501,10 +2499,13 @@ async fn api_list_sessions(
     let mut entries: Vec<SessionListEntry> = guard
         .iter()
         .map(|(sid, msgs)| {
-            let last = msgs.last().map(|m| {
-                let preview: String = m.content.chars().take(120).collect();
-                preview
-            }).unwrap_or_default();
+            let last = msgs
+                .last()
+                .map(|m| {
+                    let preview: String = m.content.chars().take(120).collect();
+                    preview
+                })
+                .unwrap_or_default();
             SessionListEntry {
                 session_id: sid.clone(),
                 created_at: 0,
@@ -3520,9 +3521,7 @@ async fn api_inference_settings_put(
 }
 
 /// GET /api/ollama/models — list models available in the connected Ollama instance.
-async fn api_ollama_models(
-    State(state): State<Arc<WebState>>,
-) -> Json<serde_json::Value> {
+async fn api_ollama_models(State(state): State<Arc<WebState>>) -> Json<serde_json::Value> {
     let Some(inf) = &state.inference else {
         return Json(serde_json::json!({ "models": [], "error": "Inference not available" }));
     };
@@ -3541,14 +3540,18 @@ async fn api_ollama_models(
         .unwrap_or_default();
 
     match client.get(format!("{url}/api/tags")).send().await {
-        Ok(resp) if resp.status().is_success() => {
-            match resp.json::<serde_json::Value>().await {
-                Ok(body) => Json(body),
-                Err(e) => Json(serde_json::json!({ "models": [], "error": format!("Parse error: {e}") })),
+        Ok(resp) if resp.status().is_success() => match resp.json::<serde_json::Value>().await {
+            Ok(body) => Json(body),
+            Err(e) => {
+                Json(serde_json::json!({ "models": [], "error": format!("Parse error: {e}") }))
             }
-        }
-        Ok(resp) => Json(serde_json::json!({ "models": [], "error": format!("Ollama returned {}", resp.status()) })),
-        Err(e) => Json(serde_json::json!({ "models": [], "error": format!("Cannot reach Ollama at {url}: {e}") })),
+        },
+        Ok(resp) => Json(
+            serde_json::json!({ "models": [], "error": format!("Ollama returned {}", resp.status()) }),
+        ),
+        Err(e) => Json(
+            serde_json::json!({ "models": [], "error": format!("Cannot reach Ollama at {url}: {e}") }),
+        ),
     }
 }
 
@@ -3565,7 +3568,11 @@ async fn api_ollama_pull(
     let url = live_r.ollama_url.clone();
     drop(live_r);
 
-    let model = body.get("model").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    let model = body
+        .get("model")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
     if model.is_empty() {
         return Json(serde_json::json!({ "success": false, "error": "No model specified" }));
     }
@@ -3590,11 +3597,13 @@ async fn api_ollama_pull(
         Ok(resp) => {
             let status = resp.status();
             let text = resp.text().await.unwrap_or_default();
-            Json(serde_json::json!({ "success": false, "error": format!("Ollama returned {status}: {text}") }))
+            Json(
+                serde_json::json!({ "success": false, "error": format!("Ollama returned {status}: {text}") }),
+            )
         }
-        Err(e) => {
-            Json(serde_json::json!({ "success": false, "error": format!("Cannot reach Ollama at {url}: {e}") }))
-        }
+        Err(e) => Json(
+            serde_json::json!({ "success": false, "error": format!("Cannot reach Ollama at {url}: {e}") }),
+        ),
     }
 }
 
@@ -3653,9 +3662,18 @@ async fn api_models_download(
 
     // Broadcast progress via WebSocket
     let ws_tx = state.ws_control_tx.clone();
-    let preset_id = dest.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+    let preset_id = dest
+        .file_stem()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
     let progress_cb = move |downloaded: u64, total: Option<u64>| {
-        let pct = total.map(|t| if t > 0 { (downloaded as f64 / t as f64 * 100.0) as u32 } else { 0 });
+        let pct = total.map(|t| {
+            if t > 0 {
+                (downloaded as f64 / t as f64 * 100.0) as u32
+            } else {
+                0
+            }
+        });
         let _ = ws_tx.send(serde_json::json!({
             "type": "download_progress",
             "preset": &preset_id,

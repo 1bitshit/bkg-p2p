@@ -95,7 +95,11 @@ pub fn migrate_from_legacy() -> std::io::Result<()> {
         return Ok(());
     }
 
-    tracing::info!("Migrating data from {} to {}", legacy_dir.display(), new_dir.display());
+    tracing::info!(
+        "Migrating data from {} to {}",
+        legacy_dir.display(),
+        new_dir.display()
+    );
 
     std::fs::create_dir_all(&new_dir)?;
 
@@ -113,7 +117,10 @@ pub fn migrate_from_legacy() -> std::io::Result<()> {
         }
     }
 
-    tracing::info!("Migration complete. Old data preserved at {}", legacy_dir.display());
+    tracing::info!(
+        "Migration complete. Old data preserved at {}",
+        legacy_dir.display()
+    );
     Ok(())
 }
 

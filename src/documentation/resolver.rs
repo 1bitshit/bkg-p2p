@@ -24,7 +24,11 @@ impl LibraryResolver {
         }
 
         // Sort by confidence descending
-        all_matches.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal));
+        all_matches.sort_by(|a, b| {
+            b.confidence
+                .partial_cmp(&a.confidence)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         // Deduplicate by library_id
         all_matches.dedup_by(|a, b| a.library_id == b.library_id);
@@ -33,7 +37,10 @@ impl LibraryResolver {
     }
 
     /// Find the best match for a library query
-    pub async fn resolve_best(&self, request: ResolveLibraryRequest) -> Result<Option<LibraryMatch>> {
+    pub async fn resolve_best(
+        &self,
+        request: ResolveLibraryRequest,
+    ) -> Result<Option<LibraryMatch>> {
         let matches = self.resolve(request).await?;
         Ok(matches.into_iter().next())
     }

@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use libp2p::PeerId;
+use serde::{Deserialize, Serialize};
 
 /// File transfer request
 #[derive(Debug, Clone, Serialize, Deserialize)]

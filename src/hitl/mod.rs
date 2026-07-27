@@ -3,10 +3,10 @@
 //! Tools or actions that require explicit user confirmation
 //! pass through this state machine before execution.
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use serde::{Deserialize, Serialize};
 
 /// The lifecycle states of a HITL request.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -78,10 +78,7 @@ impl HitlStore {
     pub async fn list(&self, status: Option<HitlStatus>) -> Vec<HitlRequest> {
         let map = self.inner.read().await;
         if let Some(s) = status {
-            map.values()
-                .filter(|r| r.status == s)
-                .cloned()
-                .collect()
+            map.values().filter(|r| r.status == s).cloned().collect()
         } else {
             map.values().cloned().collect()
         }
@@ -90,12 +87,11 @@ impl HitlStore {
     /// Approve a pending request.
     pub async fn approve(&self, id: &str, by: &str) -> Result<(), String> {
         let mut map = self.inner.write().await;
-        let req = map.get_mut(id).ok_or_else(|| format!("request {id} not found"))?;
+        let req = map
+            .get_mut(id)
+            .ok_or_else(|| format!("request {id} not found"))?;
         if req.status != HitlStatus::Pending {
-            return Err(format!(
-                "request {id} is already {:?}",
-                req.status
-            ));
+            return Err(format!("request {id} is already {:?}", req.status));
         }
         req.status = HitlStatus::Approved;
         req.decided_at = Some(chrono::Utc::now().to_rfc3339());
@@ -106,12 +102,11 @@ impl HitlStore {
     /// Reject a pending request.
     pub async fn reject(&self, id: &str, by: &str) -> Result<(), String> {
         let mut map = self.inner.write().await;
-        let req = map.get_mut(id).ok_or_else(|| format!("request {id} not found"))?;
+        let req = map
+            .get_mut(id)
+            .ok_or_else(|| format!("request {id} not found"))?;
         if req.status != HitlStatus::Pending {
-            return Err(format!(
-                "request {id} is already {:?}",
-                req.status
-            ));
+            return Err(format!("request {id} is already {:?}", req.status));
         }
         req.status = HitlStatus::Rejected;
         req.decided_at = Some(chrono::Utc::now().to_rfc3339());
@@ -122,7 +117,9 @@ impl HitlStore {
     /// Escalate a request that has timed out.
     pub async fn escalate(&self, id: &str) -> Result<(), String> {
         let mut map = self.inner.write().await;
-        let req = map.get_mut(id).ok_or_else(|| format!("request {id} not found"))?;
+        let req = map
+            .get_mut(id)
+            .ok_or_else(|| format!("request {id} not found"))?;
         req.status = HitlStatus::Escalated;
         req.decided_at = Some(chrono::Utc::now().to_rfc3339());
         Ok(())

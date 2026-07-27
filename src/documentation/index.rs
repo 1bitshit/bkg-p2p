@@ -1,9 +1,9 @@
 use crate::documentation::types::*;
-use anyhow::Result;
 use crate::VectorStore;
+use anyhow::Result;
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
-use parking_lot::RwLock;
 
 /// Documentation index for vector search
 pub struct DocumentationIndex {
@@ -33,7 +33,9 @@ impl DocumentationIndex {
         for (i, chunk) in content.as_bytes().chunks(chunk_size).enumerate() {
             let text = String::from_utf8_lossy(chunk).to_string();
             let id = format!("{}_chunk_{}", metadata.library_id.name, i);
-            self.text_entries.write().insert(id, (text, metadata.clone()));
+            self.text_entries
+                .write()
+                .insert(id, (text, metadata.clone()));
         }
 
         Ok(())

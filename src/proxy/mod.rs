@@ -108,7 +108,7 @@ pub struct ProxyConfig {
 
 impl Default for ProxyConfig {
     fn default() -> Self {
-Self {
+        Self {
             listen_addr: "127.0.0.1:8402".parse().unwrap(),
             base_price_per_request: to_micro(0.01), // 0.01 BKG per request
             enable_channels: true,
@@ -317,32 +317,26 @@ impl Proxy {
                         proof_id,
                         amount,
                         signature,
-                    } => {
-                        state
-                            .payment_verifier
-                            .verify_direct(proof_id, *amount, signature, price)
-                            .await
-                            .unwrap_or(false)
-                    }
+                    } => state
+                        .payment_verifier
+                        .verify_direct(proof_id, *amount, signature, price)
+                        .await
+                        .unwrap_or(false),
                     PaymentMethod::Channel {
                         channel_id,
                         nonce,
                         amount,
                         signature,
-                    } => {
-                        state
-                            .payment_verifier
-                            .verify_channel(channel_id, *nonce, *amount, signature, price)
-                            .await
-                            .unwrap_or(false)
-                    }
-                    PaymentMethod::Prepaid { api_key, .. } => {
-                        state
-                            .payment_verifier
-                            .verify_prepaid(api_key, price)
-                            .await
-                            .unwrap_or(false)
-                    }
+                    } => state
+                        .payment_verifier
+                        .verify_channel(channel_id, *nonce, *amount, signature, price)
+                        .await
+                        .unwrap_or(false),
+                    PaymentMethod::Prepaid { api_key, .. } => state
+                        .payment_verifier
+                        .verify_prepaid(api_key, price)
+                        .await
+                        .unwrap_or(false),
                 }
             }
             None => {
@@ -369,62 +363,64 @@ impl Proxy {
         // Record request for rate limiting
         state.record_request(&client_id).await;
 
-// Forward request to upstream and return response
-    if state.config.upstream_url.is_empty() {
-        return Err(ProxyError::UpstreamError(
-            "No upstream URL configured".into(),
-        ));
-    }
-    let client = reqwest::Client::new();
-    let upstream_url = format!("{}{}", state.config.upstream_url, path);
+        // Forward request to upstream and return response
+        if state.config.upstream_url.is_empty() {
+            return Err(ProxyError::UpstreamError(
+                "No upstream URL configured".into(),
+            ));
+        }
+        let client = reqwest::Client::new();
+        let upstream_url = format!("{}{}", state.config.upstream_url, path);
 
-    let mut req_builder = client.request(
-        request.method().clone(),
-        &upstream_url,
-    );
+        let mut req_builder = client.request(request.method().clone(), &upstream_url);
 
-    // Copy headers (excluding hop-by-hop headers)
-    for (key, value) in headers.iter() {
-        if !is_hop_by_hop(key) {
-            if let Ok(v) = value.to_str() {
-                req_builder = req_builder.header(key.as_str(), v);
+        // Copy headers (excluding hop-by-hop headers)
+        for (key, value) in headers.iter() {
+            if !is_hop_by_hop(key) {
+                if let Ok(v) = value.to_str() {
+                    req_builder = req_builder.header(key.as_str(), v);
+                }
             }
         }
-    }
 
-    // Copy body
-    let body_bytes = axum::body::to_bytes(request.into_body(), usize::MAX)
-        .await
-        .map_err(|e| ProxyError::UpstreamError(format!("Failed to read request body: {}", e)))?;
-    req_builder = req_builder.body(body_bytes);
+        // Copy body
+        let body_bytes = axum::body::to_bytes(request.into_body(), usize::MAX)
+            .await
+            .map_err(|e| {
+                ProxyError::UpstreamError(format!("Failed to read request body: {}", e))
+            })?;
+        req_builder = req_builder.body(body_bytes);
 
-    // Send request
-    let response = client
-        .execute(req_builder.build().map_err(|e| ProxyError::UpstreamError(e.to_string()))?)
-        .await
-        .map_err(|e| ProxyError::UpstreamError(e.to_string()))?;
+        // Send request
+        let response = client
+            .execute(
+                req_builder
+                    .build()
+                    .map_err(|e| ProxyError::UpstreamError(e.to_string()))?,
+            )
+            .await
+            .map_err(|e| ProxyError::UpstreamError(e.to_string()))?;
 
-    let status = response.status();
-    let mut response_builder = axum::response::Response::builder().status(status);
+        let status = response.status();
+        let mut response_builder = axum::response::Response::builder().status(status);
 
-    // Copy response headers
-    for (key, value) in response.headers().iter() {
-        if !is_hop_by_hop(key) {
-            if let Ok(v) = value.to_str() {
-                response_builder = response_builder.header(key.as_str(), v);
+        // Copy response headers
+        for (key, value) in response.headers().iter() {
+            if !is_hop_by_hop(key) {
+                if let Ok(v) = value.to_str() {
+                    response_builder = response_builder.header(key.as_str(), v);
+                }
             }
         }
-    }
 
-    let body = response
-        .bytes()
-        .await
-        .map_err(|e| ProxyError::UpstreamError(e.to_string()))?;
+        let body = response
+            .bytes()
+            .await
+            .map_err(|e| ProxyError::UpstreamError(e.to_string()))?;
 
-    Ok((
-        response_builder.body(axum::body::Body::from(body))
-            .map_err(|e| ProxyError::UpstreamError(e.to_string()))?,
-    ))
+        Ok((response_builder
+            .body(axum::body::Body::from(body))
+            .map_err(|e| ProxyError::UpstreamError(e.to_string()))?,))
     }
 
     /// Run the proxy server.
@@ -446,39 +442,6 @@ fn is_hop_by_hop(key: &axum::http::HeaderName) -> bool {
     matches!(
         *key,
         header::CONNECTION
-            | header::KEEP_ALIVE
-            | header::PROXY_AUTHENTICATE
-            | header::PROXY_AUTHORIZATION
-            | header::TE
-            | header::TRAILER
-            | header::TRANSFER_ENCODING
-            | header::UPGRADE
-    )
-}
-
-/// Check if an HTTP header is hop-by-hop and should not be forwarded.
-fn is_hop_by_hop(key: &axum::http::HeaderName) -> bool {
-    use axum::http::header;
-    matches!(
-        *key,
-        header::CONNECTION
-            | header::KEEP_ALIVE
-            | header::PROXY_AUTHENTICATE
-            | header::PROXY_AUTHORIZATION
-            | header::TE
-            | header::TRAILER
-            | header::TRANSFER_ENCODING
-            | header::UPGRADE
-    )
-}
-
-/// Check if an HTTP header is hop-by-hop and should not be forwarded.
-fn is_hop_by_hop(key: &axum::http::HeaderName) -> bool {
-    use axum::http::header;
-    matches!(
-        *key,
-        header::CONNECTION
-            | header::KEEP_ALIVE
             | header::PROXY_AUTHENTICATE
             | header::PROXY_AUTHORIZATION
             | header::TE

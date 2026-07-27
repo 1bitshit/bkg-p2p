@@ -273,10 +273,7 @@ async fn show_status(runtime: &Runtime) {
         "  Connected Peers: \x1b[32m{}\x1b[0m",
         stats.connected_peers
     );
-    println!(
-        "  Balance:         \x1b[33m{:.6} BKG\x1b[0m",
-        stats.balance
-    );
+    println!("  Balance:         \x1b[33m{:.6} BKG\x1b[0m", stats.balance);
     println!("  Active Jobs:     {}", stats.active_jobs);
     println!("  Completed Jobs:  {}", stats.completed_jobs);
     println!();

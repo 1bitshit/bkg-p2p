@@ -118,7 +118,15 @@ pub async fn run_crew(
     // --- Delegate mode: first agent (or manager) picks the best agent per task ---
     if spec.process == CrewProcess::Delegate {
         return run_crew_delegate(
-            spec, inputs, executor, tools, peer_id, node_tool_tx, inference_sink, prompts, cancel,
+            spec,
+            inputs,
+            executor,
+            tools,
+            peer_id,
+            node_tool_tx,
+            inference_sink,
+            prompts,
+            cancel,
             extras,
         )
         .await;
@@ -146,9 +154,9 @@ pub async fn run_crew(
             peer_id.clone(),
             node_tool_tx.clone(),
             prompts.clone(),
-inference_sink.clone(),
-        None,
-    );
+            inference_sink.clone(),
+            None,
+        );
         let plan_prompt = format!(
             "You coordinate this crew. Tasks (in order): {:?}.\nInputs: {}\nReply with a short bullet plan (max 8 lines) for how the crew should execute.",
             task_list,
@@ -165,13 +173,13 @@ inference_sink.clone(),
     let mut total_tokens = 0u32;
 
     for task in &spec.tasks {
-         let _task_span = tracing::info_span!(
-             "crew_task",
-             task_id = %task.id,
-             agent_id = %task.agent_id
-         );
-         let _enter_task = _task_span.enter();
-         let agent = spec
+        let _task_span = tracing::info_span!(
+            "crew_task",
+            task_id = %task.id,
+            agent_id = %task.agent_id
+        );
+        let _enter_task = _task_span.enter();
+        let agent = spec
             .agents
             .iter()
             .find(|a| a.id == task.agent_id)
@@ -200,9 +208,9 @@ inference_sink.clone(),
             peer_id.clone(),
             node_tool_tx.clone(),
             prompts.clone(),
-inference_sink.clone(),
-        None,
-    );
+            inference_sink.clone(),
+            None,
+        );
         let res = rt
             .run_task_with_session(&user_block, cancel, None, extras.clone())
             .await;
@@ -298,9 +306,9 @@ async fn run_crew_delegate(
             peer_id.clone(),
             node_tool_tx.clone(),
             prompts.clone(),
-inference_sink.clone(),
-        None,
-    );
+            inference_sink.clone(),
+            None,
+        );
         let res = rt
             .run_task_with_session(&user_block, cancel, None, extras.clone())
             .await;

@@ -34,22 +34,24 @@ impl ReputationStore {
     /// Update reputation based on an event
     pub async fn update(&self, event: ReputationEvent) -> Result<()> {
         let mut profiles = self.profiles.write().await;
-        let profile = profiles.entry(event.peer_id.clone()).or_insert_with(|| PeerReputation {
-            peer_id: event.peer_id.clone(),
-            overall_score: 0.5,
-            capability_scores: HashMap::new(),
-            success_rate: 0.0,
-            abort_rate: 0.0,
-            timeout_rate: 0.0,
-            dispute_history: Vec::new(),
-            proof_verification_rate: 0.0,
-            avg_response_latency_ms: 0.0,
-            first_seen: chrono::Utc::now(),
-            last_updated: chrono::Utc::now(),
-            total_interactions: 0,
-            trust_level: TrustLevel::Untrusted,
-            local_override: None,
-        });
+        let profile = profiles
+            .entry(event.peer_id.clone())
+            .or_insert_with(|| PeerReputation {
+                peer_id: event.peer_id.clone(),
+                overall_score: 0.5,
+                capability_scores: HashMap::new(),
+                success_rate: 0.0,
+                abort_rate: 0.0,
+                timeout_rate: 0.0,
+                dispute_history: Vec::new(),
+                proof_verification_rate: 0.0,
+                avg_response_latency_ms: 0.0,
+                first_seen: chrono::Utc::now(),
+                last_updated: chrono::Utc::now(),
+                total_interactions: 0,
+                trust_level: TrustLevel::Untrusted,
+                local_override: None,
+            });
 
         // Apply event weight
         let delta = match event.event_type {
@@ -71,12 +73,15 @@ impl ReputationStore {
 
         // Update capability-specific score if provided
         if let Some(capability) = event.capability {
-            let cap_score = profile.capability_scores.entry(capability.clone()).or_insert_with(|| CapabilityScore {
-                capability,
-                score: 0.5,
-                interactions: 0,
-                last_updated: chrono::Utc::now(),
-            });
+            let cap_score = profile
+                .capability_scores
+                .entry(capability.clone())
+                .or_insert_with(|| CapabilityScore {
+                    capability,
+                    score: 0.5,
+                    interactions: 0,
+                    last_updated: chrono::Utc::now(),
+                });
             cap_score.score = (cap_score.score + delta).clamp(0.0, 1.0);
             cap_score.interactions += 1;
             cap_score.last_updated = chrono::Utc::now();
@@ -93,7 +98,10 @@ impl ReputationStore {
                 profile.local_override = score;
                 tracing::info!("Setting local override for {}: {:?}", peer_id, score);
             } else {
-                tracing::warn!("Local overrides disabled in config, ignoring override for {}", peer_id);
+                tracing::warn!(
+                    "Local overrides disabled in config, ignoring override for {}",
+                    peer_id
+                );
             }
         }
         Ok(())
@@ -109,52 +117,58 @@ impl ReputationStore {
             peers.sort_by(|a, b| {
                 let score_a = a.capability_scores.get(cap).map(|s| s.score).unwrap_or(0.0);
                 let score_b = b.capability_scores.get(cap).map(|s| s.score).unwrap_or(0.0);
-                score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+                score_b
+                    .partial_cmp(&score_a)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             });
         } else {
-            peers.sort_by(|a, b| b.overall_score.partial_cmp(&a.overall_score).unwrap_or(std::cmp::Ordering::Equal));
+            peers.sort_by(|a, b| {
+                b.overall_score
+                    .partial_cmp(&a.overall_score)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
         }
 
         peers.truncate(limit);
         peers
     }
 
-/// Persist all in-memory reputation profiles to the database.
-///
-/// If a database is attached, every profile is serialized with MessagePack
-/// and written to the `reputation` table. Without a database this is a no-op.
-pub async fn persist(&self) -> Result<()> {
-    let db = match &self.db {
-        Some(db) => db,
-        None => return Ok(()),
-    };
+    /// Persist all in-memory reputation profiles to the database.
+    ///
+    /// If a database is attached, every profile is serialized with MessagePack
+    /// and written to the `reputation` table. Without a database this is a no-op.
+    pub async fn persist(&self) -> Result<()> {
+        let db = match &self.db {
+            Some(db) => db,
+            None => return Ok(()),
+        };
 
-    let profiles = self.profiles.read().await;
-    for (peer_id, profile) in profiles.iter() {
-        db.store_reputation(peer_id, profile)?;
-    }
-    Ok(())
-}
-
-/// Load all reputation profiles from the database into memory.
-///
-/// Existing in-memory profiles are replaced by the persisted state.
-/// Without a database this is a no-op.
-pub async fn load(&self) -> Result<()> {
-    let db = match &self.db {
-        Some(db) => db,
-        None => return Ok(()),
-    };
-
-    let ids = db.list_reputation_ids()?;
-    let mut profiles = self.profiles.write().await;
-    profiles.clear();
-
-    for peer_id in ids {
-        if let Some(profile) = db.get_reputation::<PeerReputation>(&peer_id)? {
-            profiles.insert(peer_id, profile);
+        let profiles = self.profiles.read().await;
+        for (peer_id, profile) in profiles.iter() {
+            db.store_reputation(peer_id, profile)?;
         }
+        Ok(())
     }
-    Ok(())
-}
+
+    /// Load all reputation profiles from the database into memory.
+    ///
+    /// Existing in-memory profiles are replaced by the persisted state.
+    /// Without a database this is a no-op.
+    pub async fn load(&self) -> Result<()> {
+        let db = match &self.db {
+            Some(db) => db,
+            None => return Ok(()),
+        };
+
+        let ids = db.list_reputation_ids()?;
+        let mut profiles = self.profiles.write().await;
+        profiles.clear();
+
+        for peer_id in ids {
+            if let Some(profile) = db.get_reputation::<PeerReputation>(&peer_id)? {
+                profiles.insert(peer_id, profile);
+            }
+        }
+        Ok(())
+    }
 }

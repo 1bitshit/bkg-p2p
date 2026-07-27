@@ -7249,7 +7249,6 @@ checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 [[package]]
 name = "vectx"
 version = "0.2.8"
-source = "git+https://github.com/antonellof/vectX.git#3c0560d1d535a3b29a1635a760e3c9749ddab667"
 dependencies = [
  "actix-cors",
  "actix-web",
@@ -7281,7 +7280,6 @@ dependencies = [
 [[package]]
 name = "vectx-api"
 version = "0.2.8"
-source = "git+https://github.com/antonellof/vectX.git#3c0560d1d535a3b29a1635a760e3c9749ddab667"
 dependencies = [
  "actix-cors",
  "actix-files",
@@ -7306,7 +7304,6 @@ dependencies = [
 [[package]]
 name = "vectx-core"
 version = "0.2.8"
-source = "git+https://github.com/antonellof/vectX.git#3c0560d1d535a3b29a1635a760e3c9749ddab667"
 dependencies = [
  "ahash",
  "anyhow",
@@ -7324,7 +7321,6 @@ dependencies = [
 [[package]]
 name = "vectx-storage"
 version = "0.2.8"
-source = "git+https://github.com/antonellof/vectX.git#3c0560d1d535a3b29a1635a760e3c9749ddab667"
 dependencies = [
  "anyhow",
  "atomicwrites",

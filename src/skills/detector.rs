@@ -26,7 +26,12 @@ impl SkillDetector {
                 .tags
                 .iter()
                 .map(|t| t.to_lowercase())
-                .chain(skill.name.split(|c: char| !c.is_alphanumeric()).map(|s| s.to_lowercase()))
+                .chain(
+                    skill
+                        .name
+                        .split(|c: char| !c.is_alphanumeric())
+                        .map(|s| s.to_lowercase()),
+                )
                 .filter(|s| !s.is_empty())
                 .collect();
 

@@ -128,14 +128,8 @@ pub async fn run(cmd: WalletCommand) -> anyhow::Result<()> {
 
             println!("Wallet Balance");
             println!("--------------");
-            println!(
-                "  Available:  {:>12.6} BKG",
-                from_micro(balance.available)
-            );
-            println!(
-                "  In escrow:  {:>12.6} BKG",
-                from_micro(balance.in_escrow)
-            );
+            println!("  Available:  {:>12.6} BKG", from_micro(balance.available));
+            println!("  In escrow:  {:>12.6} BKG", from_micro(balance.in_escrow));
             println!("  Staked:     {:>12.6} BKG", from_micro(balance.staked));
             println!("  ─────────────────────────");
             println!("  Total:      {:>12.6} BKG", from_micro(balance.total));

@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
-use libp2p::PeerId;
 use crate::p2p::envelope::P2PEnvelope;
+use libp2p::PeerId;
+use serde::{Deserialize, Serialize};
 
 /// Peer invitation for direct connections
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -227,27 +227,27 @@ impl Runtime {
 
         let prompts = crate::prompts::load_prompt_bundle(&config);
 
-Ok(Self {
-             identity,
-             database,
-             wallet,
-             job_manager,
-             network,
-             executor,
-             inference,
-             model_distributor,
-             job_provider,
-             remote_executor,
-             batch_aggregator,
-             tools,
-             skills,
-             provider_tracker,
-             local_peer_id,
-             config,
-             prompts,
-             a2a,
-             metrics: Arc::new(Metrics::new()),
-             swarm_manager: tokio::sync::RwLock::new(None),
+        Ok(Self {
+            identity,
+            database,
+            wallet,
+            job_manager,
+            network,
+            executor,
+            inference,
+            model_distributor,
+            job_provider,
+            remote_executor,
+            batch_aggregator,
+            tools,
+            skills,
+            provider_tracker,
+            local_peer_id,
+            config,
+            prompts,
+            a2a,
+            metrics: Arc::new(Metrics::new()),
+            swarm_manager: tokio::sync::RwLock::new(None),
         })
     }
 
@@ -345,9 +345,7 @@ Ok(Self {
         }
 
         let local_peer_id = self.local_peer_id.to_string();
-        let mut advert = crate::p2p::tool_manifest::ToolManifestAdvert::new(
-            &local_peer_id,
-        );
+        let mut advert = crate::p2p::tool_manifest::ToolManifestAdvert::new(&local_peer_id);
 
         for tool_info in &tools {
             let manifest = crate::p2p::tool_manifest::ToolManifest::new(
@@ -583,7 +581,7 @@ Ok(Self {
                                 "Job status update"
                             );
                         }
-                        }
+                        _ => {}
                     }
                 }
             }

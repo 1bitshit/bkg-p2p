@@ -304,7 +304,12 @@ impl FlowSpec {
         Self {
             name,
             nodes: vec![
-                FlowNode { id: "s".into(), kind: "start".into(), name: "Start".into(), ..Default::default() },
+                FlowNode {
+                    id: "s".into(),
+                    kind: "start".into(),
+                    name: "Start".into(),
+                    ..Default::default()
+                },
                 FlowNode {
                     id: "crew".into(),
                     kind: "crew".into(),
@@ -312,11 +317,24 @@ impl FlowSpec {
                     crew_spec: Some(crew),
                     ..Default::default()
                 },
-                FlowNode { id: "e".into(), kind: "end".into(), name: "End".into(), ..Default::default() },
+                FlowNode {
+                    id: "e".into(),
+                    kind: "end".into(),
+                    name: "End".into(),
+                    ..Default::default()
+                },
             ],
             edges: vec![
-                FlowEdge { from: "s".into(), to: "crew".into(), label: None },
-                FlowEdge { from: "crew".into(), to: "e".into(), label: None },
+                FlowEdge {
+                    from: "s".into(),
+                    to: "crew".into(),
+                    label: None,
+                },
+                FlowEdge {
+                    from: "crew".into(),
+                    to: "e".into(),
+                    label: None,
+                },
             ],
         }
     }
@@ -326,19 +344,39 @@ impl FlowSpec {
         Self {
             name: agent_name.to_string(),
             nodes: vec![
-                FlowNode { id: "s".into(), kind: "start".into(), name: "Start".into(), ..Default::default() },
+                FlowNode {
+                    id: "s".into(),
+                    kind: "start".into(),
+                    name: "Start".into(),
+                    ..Default::default()
+                },
                 FlowNode {
                     id: "agent".into(),
                     kind: "agent".into(),
                     name: agent_name.to_string(),
-                    instructions: format!("You are a helpful {agent_name} agent. Complete the user's request."),
+                    instructions: format!(
+                        "You are a helpful {agent_name} agent. Complete the user's request."
+                    ),
                     ..Default::default()
                 },
-                FlowNode { id: "e".into(), kind: "end".into(), name: "End".into(), ..Default::default() },
+                FlowNode {
+                    id: "e".into(),
+                    kind: "end".into(),
+                    name: "End".into(),
+                    ..Default::default()
+                },
             ],
             edges: vec![
-                FlowEdge { from: "s".into(), to: "agent".into(), label: None },
-                FlowEdge { from: "agent".into(), to: "e".into(), label: None },
+                FlowEdge {
+                    from: "s".into(),
+                    to: "agent".into(),
+                    label: None,
+                },
+                FlowEdge {
+                    from: "agent".into(),
+                    to: "e".into(),
+                    label: None,
+                },
             ],
         }
     }

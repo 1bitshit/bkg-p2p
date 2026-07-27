@@ -1,6 +1,6 @@
 //! Phase 0 (v0.5): golden JSON under `templates/` must stay parseable and valid.
-use bkg-peer::crew::CrewSpec;
-use bkg-peer::flow::FlowSpec;
+use bkg_p2p::crew::CrewSpec;
+use bkg_p2p::flow::FlowSpec;
 
 fn manifest_dir() -> &'static str {
     env!("CARGO_MANIFEST_DIR")
@@ -47,13 +47,18 @@ fn flow_from_crew_conversion() {
     let raw = std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {p}: {e}"));
     let crew: CrewSpec = serde_json::from_str(&raw).expect("parse CrewSpec");
     let flow = FlowSpec::from_crew(crew);
-    flow.validate_for_run().expect("converted flow should validate");
-    assert!(flow.has_interpreter_start(), "converted flow should use interpreter mode");
+    flow.validate_for_run()
+        .expect("converted flow should validate");
+    assert!(
+        flow.has_interpreter_start(),
+        "converted flow should use interpreter mode"
+    );
 }
 
 #[test]
 fn flow_single_agent() {
     let flow = FlowSpec::single_agent("Test");
-    flow.validate_for_run().expect("single agent flow should validate");
+    flow.validate_for_run()
+        .expect("single agent flow should validate");
     assert!(flow.has_interpreter_start());
 }

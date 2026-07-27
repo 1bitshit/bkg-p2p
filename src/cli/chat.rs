@@ -795,10 +795,7 @@ pub async fn run(args: ChatArgs) -> anyhow::Result<()> {
                     }
                     // Estimate cost in BKG (rough: 1 BKG per 1000 tokens)
                     let estimated_cost = session_stats.total_tokens as f64 / 1000.0;
-                    println!(
-                        "  Est. cost:      \x1b[33m{:.4} BKG\x1b[0m",
-                        estimated_cost
-                    );
+                    println!("  Est. cost:      \x1b[33m{:.4} BKG\x1b[0m", estimated_cost);
                     println!();
                     continue;
                 }

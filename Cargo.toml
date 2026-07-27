@@ -145,3 +145,7 @@ codegen-units = 1
 
 [profile.dev]
 opt-level = 1
+
+# Patch vectX for Windows compatibility (nix fork/waitpid is Unix-only)
+[patch."https://github.com/antonellof/vectX.git"]
+vectx = { path = "../vectX-patched" }

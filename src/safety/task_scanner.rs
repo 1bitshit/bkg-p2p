@@ -147,42 +147,111 @@ impl TaskScanner {
     fn scan_operation(&self, op: &str) -> Vec<SafetyIssue> {
         let mut issues = Vec::new();
         let patterns: Vec<(&str, &str, IssueCategory)> = vec![
-            ("rm -rf", "Recursive force delete", IssueCategory::DangerousOperation),
-            ("rm -r /", "Deleting root filesystem", IssueCategory::DangerousOperation),
-            ("sudo", "Privilege escalation via sudo", IssueCategory::PermissionEscalation),
-            ("chmod 777", "World-writable permissions", IssueCategory::PermissionEscalation),
-            ("curl | sh", "Pipe remote script to shell", IssueCategory::DangerousOperation),
-            ("wget | sh", "Pipe remote script to shell", IssueCategory::DangerousOperation),
-            ("curl | bash", "Pipe remote script to bash", IssueCategory::DangerousOperation),
-            ("wget | bash", "Pipe remote script to bash", IssueCategory::DangerousOperation),
-            ("eval(", "Dynamic code evaluation", IssueCategory::DangerousOperation),
-            ("exec(", "Dynamic code execution", IssueCategory::DangerousOperation),
-            ("> /etc/", "Writing to system directory", IssueCategory::DangerousOperation),
-            ("dd if=", "Raw disk write", IssueCategory::DangerousOperation),
-            ("mkfs", "Filesystem formatting", IssueCategory::DangerousOperation),
+            (
+                "rm -rf",
+                "Recursive force delete",
+                IssueCategory::DangerousOperation,
+            ),
+            (
+                "rm -r /",
+                "Deleting root filesystem",
+                IssueCategory::DangerousOperation,
+            ),
+            (
+                "sudo",
+                "Privilege escalation via sudo",
+                IssueCategory::PermissionEscalation,
+            ),
+            (
+                "chmod 777",
+                "World-writable permissions",
+                IssueCategory::PermissionEscalation,
+            ),
+            (
+                "curl | sh",
+                "Pipe remote script to shell",
+                IssueCategory::DangerousOperation,
+            ),
+            (
+                "wget | sh",
+                "Pipe remote script to shell",
+                IssueCategory::DangerousOperation,
+            ),
+            (
+                "curl | bash",
+                "Pipe remote script to bash",
+                IssueCategory::DangerousOperation,
+            ),
+            (
+                "wget | bash",
+                "Pipe remote script to bash",
+                IssueCategory::DangerousOperation,
+            ),
+            (
+                "eval(",
+                "Dynamic code evaluation",
+                IssueCategory::DangerousOperation,
+            ),
+            (
+                "exec(",
+                "Dynamic code execution",
+                IssueCategory::DangerousOperation,
+            ),
+            (
+                "> /etc/",
+                "Writing to system directory",
+                IssueCategory::DangerousOperation,
+            ),
+            (
+                "dd if=",
+                "Raw disk write",
+                IssueCategory::DangerousOperation,
+            ),
+            (
+                "mkfs",
+                "Filesystem formatting",
+                IssueCategory::DangerousOperation,
+            ),
             (".ssh/", "SSH key access", IssueCategory::SecretExposure),
-            ("credentials", "Credential access", IssueCategory::SecretExposure),
+            (
+                "credentials",
+                "Credential access",
+                IssueCategory::SecretExposure,
+            ),
             ("password", "Password access", IssueCategory::SecretExposure),
             ("secret", "Secret access", IssueCategory::SecretExposure),
             ("token", "Token access", IssueCategory::SecretExposure),
             ("api_key", "API key access", IssueCategory::SecretExposure),
-            ("/proc/", "Process filesystem access", IssueCategory::DataExfiltration),
+            (
+                "/proc/",
+                "Process filesystem access",
+                IssueCategory::DataExfiltration,
+            ),
             ("nc -l", "Netcat listener", IssueCategory::DataExfiltration),
             ("ncat", "Ncat connection", IssueCategory::DataExfiltration),
-            ("base64 -d", "Base64 decode (obfuscation)", IssueCategory::PromptInjection),
+            (
+                "base64 -d",
+                "Base64 decode (obfuscation)",
+                IssueCategory::PromptInjection,
+            ),
         ];
 
         let op_lower = op.to_lowercase();
         for (pattern, desc, category) in patterns {
             if op_lower.contains(pattern) {
                 issues.push(SafetyIssue {
-                    severity: if category == IssueCategory::DangerousOperation || category == IssueCategory::SecretExposure {
+                    severity: if category == IssueCategory::DangerousOperation
+                        || category == IssueCategory::SecretExposure
+                    {
                         Severity::Critical
                     } else {
                         Severity::Error
                     },
                     category,
-                    description: format!("Operation contains dangerous pattern: {} ({})", pattern, desc),
+                    description: format!(
+                        "Operation contains dangerous pattern: {} ({})",
+                        pattern, desc
+                    ),
                     recommendation: Some(format!("Remove or sandbox the '{}' operation", pattern)),
                 });
             }
@@ -268,10 +337,7 @@ impl TaskScanner {
                 issues.push(SafetyIssue {
                     severity: Severity::Critical,
                     category: IssueCategory::PromptInjection,
-                    description: format!(
-                        "Task prompt contains possible injection: '{}'",
-                        pattern
-                    ),
+                    description: format!("Task prompt contains possible injection: '{}'", pattern),
                     recommendation: Some("Reject task or require human review".into()),
                 });
             }

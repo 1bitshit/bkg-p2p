@@ -276,14 +276,15 @@ impl RemoteExecutor {
                     tokens_generated: result.actual_usage.tokens.unwrap_or(0),
                     tokens_per_second: result.metrics.tokens_per_sec.unwrap_or(0.0),
                     finish_reason: super::task::FinishReason::Stop,
+                    ttfb_ms: 0,
                 })
             }
-ExecutionTask::WebFetch(_) => TaskData::WebFetch(super::task::WebFetchResult {
-                 status: 200,
-                 headers: vec![],
-                 body: result.data.clone(),
-                 ttfb_ms: 0,
-             }),
+            ExecutionTask::WebFetch(_) => TaskData::WebFetch(super::task::WebFetchResult {
+                status: 200,
+                headers: vec![],
+                body: result.data.clone(),
+                ttfb_ms: 0,
+            }),
             ExecutionTask::WebSearch(_) => {
                 TaskData::WebSearch(super::task::WebSearchResult { results: vec![] })
             }

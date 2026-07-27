@@ -283,15 +283,13 @@ fn json_tool_input_raw(params: &serde_json::Value) -> Result<String, ToolError> 
     match val {
         Some(serde_json::Value::String(s)) => Ok(s.clone()),
         Some(v) => Ok(v.to_string()),
-        None => Err(ToolError::InvalidParameters(
-            format!(
-                "missing or empty required parameter `action` for `json`. \
+        None => Err(ToolError::InvalidParameters(format!(
+            "missing or empty required parameter `action` for `json`. \
                  Required: `action` (one of parse|format|query|validate), \
                  `input` (JSON to process: a JSON string, or an object/array \
                  (accepted as structured input). \
                  Markdown ```json … ``` fences are stripped automatically.)"
-            ),
-        )),
+        ))),
     }
 }
 

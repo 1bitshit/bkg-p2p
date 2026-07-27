@@ -281,7 +281,12 @@ async fn show_multiaddrs() -> anyhow::Result<()> {
         println!("  {}", full);
     }
     println!("\nPeer ID: {}", peer_id);
-    if config.p2p.listen_addresses.iter().any(|a| a.contains("/tcp/0")) {
+    if config
+        .p2p
+        .listen_addresses
+        .iter()
+        .any(|a| a.contains("/tcp/0"))
+    {
         println!("\nNote: Port 0 = dynamic. Start the node first for actual port numbers,");
         println!("      then run 'bkg-p2p network multiaddrs' again.");
     }

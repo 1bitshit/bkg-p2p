@@ -7,14 +7,14 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
-use tokio::sync::RwLock;
 use tokio::sync::mpsc;
+use tokio::sync::RwLock;
 
 use super::model::ModelId;
 use super::ModelDistributor;
-use crate::inference::remote_openai::{RemoteGenerateResult, generate as remote_generate};
-use crate::p2p::Network;
 use crate::identity::NodeIdentity;
+use crate::inference::remote_openai::{chat_completion as remote_generate, RemoteGenerateResult};
+use crate::p2p::Network;
 
 /// Configuration for distributed inference.
 #[derive(Debug, Clone)]
@@ -94,10 +94,7 @@ pub enum DistributedResult {
 
 impl DistributedInferenceEngine {
     /// Create a new distributed inference engine.
-    pub fn new(
-        distributor: Arc<ModelDistributor>,
-        config: DistributedInferenceConfig,
-    ) -> Self {
+    pub fn new(distributor: Arc<ModelDistributor>, config: DistributedInferenceConfig) -> Self {
         let (remote_tx, _remote_rx) = mpsc::channel(64);
         Self {
             config,
@@ -112,10 +109,7 @@ impl DistributedInferenceEngine {
     }
 
     /// Find remote peers that have a model available.
-    pub async fn find_peers_for_model(
-        &self,
-        model_id: &ModelId,
-    ) -> Vec<String> {
+    pub async fn find_peers_for_model(&self, model_id: &ModelId) -> Vec<String> {
         self.distributor.get_providers(model_id).await
     }
 
@@ -184,8 +178,7 @@ impl DistributedInferenceEngine {
     ) -> Result<RemoteInferenceResponse, String> {
         let timeout = Duration::from_secs(self.config.peer_timeout_secs);
 
-        let bytes = serde_json::to_vec(request)
-            .map_err(|e| format!("serialization error: {e}"))?;
+        let bytes = serde_json::to_vec(request).map_err(|e| format!("serialization error: {e}"))?;
 
         // In the full implementation this would use libp2p request/response
         // protocol over a dedicated Stream subtype / protocol ID.
@@ -205,7 +198,7 @@ impl DistributedInferenceEngine {
 
         tokio::time::timeout(timeout, async {
             let _ = res_tx;
-            let _ = res_rx.await;
+            let _: tokio::sync::oneshot::Receiver<()> = res_rx;
         })
         .await
         .map_err(|_| "peer response timeout".to_string())?;
@@ -241,7 +234,8 @@ mod tests {
     async fn test_distributed_engine_creation() {
         let dir = tempdir().unwrap();
         let distributor = Arc::new(ModelDistributor::new(dir.path().to_path_buf()));
-        let engine = DistributedInferenceEngine::new(distributor, DistributedInferenceConfig::default());
+        let engine =
+            DistributedInferenceEngine::new(distributor, DistributedInferenceConfig::default());
         assert!(engine.config.enable_p2p_routing);
     }
 

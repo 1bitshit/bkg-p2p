@@ -17,7 +17,7 @@ pub use node_tool::{
     submit_p2p_job_via_node, NodeToolCommand, NodeToolTx, P2pJobSubmitResult,
 };
 pub use registry::{ToolInfo, ToolRegistry};
-pub use tool::{Tool, ToolContext, ToolError, ToolOutput};
+pub use tool::{ApprovalRequirement, Tool, ToolContext, ToolError, ToolOutput};
 
 use std::time::Duration;
 

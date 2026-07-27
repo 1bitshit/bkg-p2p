@@ -6,8 +6,8 @@
 pub mod bid;
 pub mod execution;
 pub mod network;
-pub mod proof;
 mod pricing;
+pub mod proof;
 mod request;
 
 pub use bid::{select_best_bid, BidId, BidStatus, JobBid};
@@ -19,12 +19,12 @@ pub use request::{JobId, JobRequest, JobRequirements};
 use crate::executor::ResourceMonitor;
 use crate::wallet::{Wallet, WalletError};
 use chrono::Utc;
-use sysinfo::System;
-use tracing;
 use std::collections::HashMap;
 use std::sync::Arc;
+use sysinfo::System;
 use thiserror::Error;
 use tokio::sync::{mpsc, RwLock};
+use tracing;
 
 #[derive(Error, Debug)]
 pub enum JobError {
@@ -395,9 +395,8 @@ impl JobManager {
             }
             ResourceType::Cpu { cores, .. } => {
                 let required_cores = *cores as f64;
-                let available_cores = (1.0 - state.cpu_usage) * sysinfo::System::new_all()
-                    .cpus()
-                    .len() as f64;
+                let available_cores =
+                    (1.0 - state.cpu_usage) * sysinfo::System::new_all().cpus().len() as f64;
                 available_cores >= required_cores && state.ram_available_mb >= 1024
             }
             ResourceType::Storage { bytes, .. } => {
@@ -477,7 +476,8 @@ impl JobManager {
 
     /// Submit a job result.
     pub async fn submit_result(&self, job_id: &JobId, result: JobResult) -> Result<(), JobError> {
-        let _phase = tracing::info_span!("job_phase", phase = "result_submitted", %job_id).entered();
+        let _phase =
+            tracing::info_span!("job_phase", phase = "result_submitted", %job_id).entered();
         let mut jobs = self.active_jobs.write().await;
         if let Some(job) = jobs.get_mut(job_id) {
             job.result = Some(result);
